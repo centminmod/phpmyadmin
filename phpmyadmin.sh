@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.0.1'
+VER='0.0.2'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -157,7 +157,7 @@ replace 'a8b7c6d' "${BLOWFISH}" -- config.inc.php
 sed -i 's/?>//g' config.inc.php
 echo "\$cfg['ForceSSL'] = 'true';" >> config.inc.php
 echo "\$cfg['ExecTimeLimit'] = '14400';" >> config.inc.php
-echo "\$cfg['MemoryLimit'] = '256M';" >> config.inc.php
+echo "\$cfg['MemoryLimit'] = '0';" >> config.inc.php
 echo "\$cfg['ShowDbStructureCreation'] = 'true';" >> config.inc.php
 echo "\$cfg['ShowDbStructureLastUpdate'] = 'true';" >> config.inc.php
 echo "\$cfg['ShowDbStructureLastCheck'] = 'true';" >> config.inc.php
@@ -317,7 +317,10 @@ php_admin_value[open_basedir] = ${BASEDIR}/${DIRNAME}:/tmp
 php_flag[display_errors] = off
 php_admin_value[error_log] = /var/log/php_myadmin_error.log
 php_admin_flag[log_errors] = on
-php_admin_value[memory_limit] = 128M
+php_admin_value[memory_limit] = 256M
+php_admin_value[max_execution_time] = 1800
+php_admin_value[post_max_size] = 512M
+php_admin_value[upload_max_filesize] = 512M
 EOF
 
 if [[ ! -f /var/log/php_myadmin_error.log ]]; then
@@ -485,6 +488,7 @@ cecho "php-fpm includes: /usr/local/nginx/conf/php_${DIRNAME}.conf" $boldgreen
 cecho "php-fpm pool conf: /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" $boldgreen
 cecho "dedicated php-fpm pool user: ${USERNAME}" $boldgreen
 cecho "dedicated php-fpm pool group: nginx" $boldgreen
+cecho "dedicated php error log: /var/log/php_myadmin_error.log" $boldgreen
 cecho "---------------------------------------------------------------" $boldyellow
 echo ""
 
