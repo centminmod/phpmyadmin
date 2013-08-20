@@ -3,8 +3,13 @@
 # phpmyadmin installer for Centmin Mod centminmod.com
 # written by George Liu (eva2000) vbtechsupport.com
 #################################################
-VER='0.0.1'
+# If you have a fairly static IP address that doesn't change often
+# set STATICIP='y'. Otherwise leave as STATICIP='n'
+STATICIP='n'
 #################################################
+VER='0.0.1'
+DT=`date +"%d%m%y-%H%M%S"`
+
 UPDATEDIR='/root/tools'
 BASEDIR='/usr/local/nginx/html'
 DIRNAME=$(echo "${RANDOM}_mysqladmin${RANDOM}")
@@ -18,8 +23,15 @@ USERNAME='phpmyadmin'
 
 SSLHNAME=$(uname -n)
 
-VERSIONALLOW='1.2.3-eva2000.04'
+VERSIONMINOR='04' # last 2 digits in Centmin Mod version i.e. 1.2.3-eva2000.04
+VERSIONALLOW="1.2.3-eva2000.${VERSIONMINOR}"
 #################################################
+CENTMINLOGDIR='/root/centminlogs'
+
+if [ ! -d "$CENTMINLOGDIR" ]; then
+mkdir $CENTMINLOGDIR
+fi
+
 # Setup Colours
 black='\E[30;40m'
 red='\E[31;40m'
@@ -53,20 +65,46 @@ return
 }
 #################################################
 VERCHECK=$(cat /etc/centminmod-release)
+MINORVER=$(cat /etc/centminmod-release | awk -F "." '{print $4}')
+COMPARE=`expr $MINORVER \< $VERSIONMINOR`
 
-if [[ "$VERCHECK" != "$VERSIONALLOW" ]]; then
-	cecho "---------------------------------------------------------------" $boldgreen
-	cecho "$0 script requires centmin.sh from" $boldyellow
-	cecho "  Centmin Mod version: $VERSIONALLOW" $boldyellow
-	cecho "  And recompiling PHP via menu option #5" $boldyellow
-	cecho "  Aborting script..." $boldyellow
-	cecho "---------------------------------------------------------------" $boldgreen
+if [[ "$VERCHECK" != "$VERSIONALLOW" && "$COMPARE" = '1' ]]; then
+	cecho "------------------------------------------------------------------------------" $boldgreen
+	cecho "  $0 script requires centmin.sh from Centmin Mod" $boldyellow
+	cecho "  version: $VERSIONALLOW + recompile PHP (menu option #5)" $boldyellow
+	echo ""
+	cecho "  The following steps are required:" $boldyellow
+	echo ""
+	cecho "  1. Download and extract centmin-${VERSIONALLOW}.zip" $boldgreen
+	cecho "     As per instructions at http://centminmod.com/download.html" $boldgreen
+	cecho "  2. Run the updated centmin.sh script version"  $boldgreen
+	echo ""
+	cecho "      ./centmin.sh"  $boldwhite
+	echo ""
+	cecho "  3. Run menu option #5 to recompile PHP entering either the"  $boldgreen
+	cecho "     same PHP version or newer PHP  5.3.x or 5.4.x version"  $boldgreen
+	cecho "  4. Download latest version phpmyadmin.sh Addon script from"  $boldgreen
+	cecho "     http://centminmod.com/centminmodparts/addons/phpmyadmin.sh"  $boldgreen
+	cecho "     Give script appropriate permissions via command:"  $boldgreen
+	echo ""
+	cecho "     chmod 0700 /full/path/to/where/you/downloaded/phpmyadmin.sh"  $boldwhite
+	echo ""
+	cecho "  5. Add port 9418 to CSF Firewall /etc/csf/csf.conf append 9418 to existing"  $boldgreen
+	cecho "     TCP_IN / TCP_OUT list of ports. Then restart CSF Firewall via command:"  $boldgreen
+	echo ""
+	cecho "     csf -r"  $boldwhite
+	echo ""
+	cecho "  6. Run phpmyadmin.sh script via commands:"  $boldgreen
+	echo ""
+	cecho "     cd /full/path/to/where/you/downloaded/"  $boldwhite
+	cecho "     ./phpmyadmin.sh install"  $boldwhite
+	#echo ""
+	#cecho "  Aborting script..." $boldyellow
+	cecho "------------------------------------------------------------------------------" $boldgreen
 	exit
 fi
 
-if [[ ! -f /usr/local/nginx/conf/phpmyadmin_check && "$1" = 'install' ]]; then
-	echo "phpmyadmin_install='y'" > /usr/local/nginx/conf/phpmyadmin_check
-elif [[ -f /usr/local/nginx/conf/phpmyadmin_check ]]; then
+if [[ -f /usr/local/nginx/conf/phpmyadmin_check ]]; then
 	cecho "---------------------------------------------------------------" $boldyellow
 	cecho "detected phpmyadmin install that already exists" $boldgreen
 	cecho "aborting..." $boldgreen
@@ -98,6 +136,14 @@ if [[ ! -f /usr/bin/git ]]; then
 	echo ""
 fi
 
+	cecho "---------------------------------------------------------------" $boldyellow
+	cecho "Installing phpmyadmin from official git repository..." $boldgreen
+	cecho "---------------------------------------------------------------" $boldyellow
+
+	cecho "This process can take some time depending on" $boldyellow
+	cecho "speed of the repository and your server..." $boldyellow
+	echo ""
+
 cd $BASEDIR
 git clone --depth=1 git://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
 cd $DIRNAME
@@ -110,7 +156,7 @@ replace 'a8b7c6d' "${BLOWFISH}" -- config.inc.php
 
 sed -i 's/?>//g' config.inc.php
 echo "\$cfg['ForceSSL'] = 'true';" >> config.inc.php
-echo "\$cfg['ExecTimeLimit'] = '7200';" >> config.inc.php
+echo "\$cfg['ExecTimeLimit'] = '14400';" >> config.inc.php
 echo "\$cfg['MemoryLimit'] = '256M';" >> config.inc.php
 echo "\$cfg['ShowDbStructureCreation'] = 'true';" >> config.inc.php
 echo "\$cfg['ShowDbStructureLastUpdate'] = 'true';" >> config.inc.php
@@ -132,7 +178,7 @@ cecho "python /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpa
 cecho "---------------------------------------------------------------" $boldyellow
 python /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS 
 
-history -d $((HISTCMD-2))
+#history -d $((HISTCMD-2))
 
 echo ""
 echo "\cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME}.conf"
@@ -143,6 +189,14 @@ sed -i 's/fastcgi_pass   127.0.0.1:9000/#fastcgi_pass   127.0.0.1:9001/g' /usr/l
 replace '#fastcgi_param HTTPS on;' 'fastcgi_param HTTPS on;' -- /usr/local/nginx/conf/php_${DIRNAME}.conf
 
 sed -i 's/#fastcgi_pass   unix:\/tmp\/php5-fpm.sock/fastcgi_pass   unix:\/tmp\/phpfpm_myadmin.sock/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+
+# increase php-fpm timeouts
+
+sed -i 's/fastcgi_connect_timeout 60;/fastcgi_connect_timeout 1800;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+
+sed -i 's/fastcgi_send_timeout 180;/fastcgi_send_timeout 1800;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+
+sed -i 's/fastcgi_read_timeout 180;/fastcgi_read_timeout 1800;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
 cat > "/usr/local/nginx/conf/phpmyadmin.conf" <<EOF
 location ^~ /${DIRNAME}/ {
@@ -158,6 +212,10 @@ cat /usr/local/nginx/conf/conf.d/virtual.conf
 
 cecho "---------------------------------------------------------------" $boldyellow
 
+if [[ "$STATICIP" = [yY] ]]; then
+
+cecho "STATIC IP configuration" $boldyellow
+
 cat > "/usr/local/nginx/conf/phpmyadmin_https.conf" <<END
 location ^~ /${DIRNAME}/ {
 	#try_files \$uri \$uri/ /${DIRNAME}/index.php?\$args;
@@ -170,6 +228,25 @@ location ^~ /${DIRNAME}/ {
 	deny all;
 }
 END
+
+else
+
+cecho "NON-STATIC IP configuration" $boldyellow
+
+cat > "/usr/local/nginx/conf/phpmyadmin_https.conf" <<END
+location ^~ /${DIRNAME}/ {
+	#try_files \$uri \$uri/ /${DIRNAME}/index.php?\$args;
+	include /usr/local/nginx/conf/php_${DIRNAME}.conf;
+
+	auth_basic      "Private Access";
+	auth_basic_user_file  /usr/local/nginx/conf/htpassphpmyadmin;
+	#allow 127.0.0.1;
+	#allow ${CURRENTIP};
+	#deny all;
+}
+END
+
+fi # STATICIP 
 
 	cecho "---------------------------------------------------------------" $boldyellow
 	cecho "cat /usr/local/nginx/conf/phpmyadmin.conf" $boldgreen
@@ -205,7 +282,7 @@ if [[ -z "$CHECKPOOL" ]]; then
 
 cat >> "/usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" <<EOF
 [phpmyadmin]
-user = phpmyadmin
+user = ${USERNAME}
 group = nginx
 
 ;listen = 127.0.0.1:9001
@@ -220,7 +297,7 @@ pm.min_spare_servers = 1
 pm.max_spare_servers = 3
 pm.max_requests = 500
 
-pm.process_idle_timeout = 10s;
+pm.process_idle_timeout = 1800s;
 
 rlimit_files = 65536
 rlimit_core = 0
@@ -237,7 +314,18 @@ slowlog = /var/log/php-fpm/www-slowmyadmin.log
 security.limit_extensions = .php .php3 .php4 .php5
 
 php_admin_value[open_basedir] = ${BASEDIR}/${DIRNAME}:/tmp
+php_flag[display_errors] = off
+php_admin_value[error_log] = /var/log/php_myadmin_error.log
+php_admin_flag[log_errors] = on
+php_admin_value[memory_limit] = 128M
 EOF
+
+if [[ ! -f /var/log/php_myadmin_error.log ]]; then
+	touch /var/log/php_myadmin_error.log
+	chown ${USERNAME}:nginx /var/log/php_myadmin_error.log
+	chmod 0666 /var/log/php_myadmin_error.log
+	ls -lah /var/log/php_myadmin_error.log
+fi
 
 fi # CHECKPOOL
 
@@ -278,6 +366,8 @@ server {
         listen 443 ssl spdy;
             server_name ${SSLHNAME};
             root   html;
+
+keepalive_timeout  1800;
 
         ssl_certificate      /usr/local/nginx/conf/ssl/${SSLHNAME}.crt;
         ssl_certificate_key  /usr/local/nginx/conf/ssl/${SSLHNAME}.key;
@@ -331,11 +421,31 @@ cecho "---------------------------------------------------------------" $boldyel
 
 cat > "/root/tools/phpmyadmin_update.sh" <<EOF
 #!/bin/bash
+DT=\$(date +"%d%m%y-%H%M%S")
+##############################################
+CENTMINLOGDIR='/root/centminlogs'
+
+if [ ! -d "$CENTMINLOGDIR" ]; then
+mkdir $CENTMINLOGDIR
+fi
+##############################################
+starttime=\$(date +%s.%N)
+{
+echo "cd ${BASEDIR}/${DIRNAME}"
 cd ${BASEDIR}/${DIRNAME}
-git pull -q
+echo "git pull"
+git pull
 
 chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
 chown -R ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
+
+} 2>&1 | tee \${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log
+
+endtime=\$(date +%s.%N)
+
+INSTALLTIME=\$(echo "scale=2;\$endtime - \$starttime"|bc )
+echo "" >> \${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log 
+echo "Total phpmyadmin Update Time: \$INSTALLTIME seconds" >> \${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log
 EOF
 
 chmod 0700 /root/tools/phpmyadmin_update.sh
@@ -351,6 +461,7 @@ echo ""
 cecho "---------------------------------------------------------------" $boldyellow
 cecho "Password protected ${DIRNAME}" $boldgreen
 cecho "at path ${BASEDIR}/${DIRNAME}" $boldgreen
+cecho "config.inc.php at: ${BASEDIR}/${DIRNAME}/config.inc.php" $boldgreen
 cecho "  WEB url: " $boldgreen
 echo ""
 cecho "  https://${SSLHNAME}/${DIRNAME}" $boldgreen
@@ -363,21 +474,50 @@ cecho "Password: $PASS" $boldgreen
 cecho "Allowed IP address: ${CURRENTIP}" $boldgreen
 echo ""
 cecho "---------------------------------------------------------------" $boldyellow
+cecho "phpmyadmin update script at: /root/tools/phpmyadmin_update.sh" $boldgreen
+cecho "Add your own cron job to automatically run the update script i.e." $boldgreen
+echo ""
+cecho "  15 01 * * * /root/tools/phpmyadmin_update.sh" $boldwhite
+echo ""
+cecho "---------------------------------------------------------------" $boldyellow
 cecho "SSL vhost: /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf" $boldgreen
 cecho "php-fpm includes: /usr/local/nginx/conf/php_${DIRNAME}.conf" $boldgreen
 cecho "php-fpm pool conf: /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" $boldgreen
+cecho "dedicated php-fpm pool user: ${USERNAME}" $boldgreen
+cecho "dedicated php-fpm pool group: nginx" $boldgreen
 cecho "---------------------------------------------------------------" $boldyellow
 echo ""
+
+echo "phpmyadmin_install='y'" > /usr/local/nginx/conf/phpmyadmin_check
 
 }
 #################################################
 case "$1" in
 install)
+starttime=$(date +%s.%N)
+{
+	#backup csf.conf
+	cp -a /etc/csf/csf.conf /etc/csf/csf.conf-backup_beforephpmyadmin_${DT}
+
 	usercreate
 	myadmininstall
 	sslvhost
 	myadminupdater
 	myadminmsg
+} 2>&1 | tee ${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log
+
+endtime=$(date +%s.%N)
+
+INSTALLTIME=$(echo "scale=2;$endtime - $starttime"|bc )
+echo "" >> ${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log
+echo "Total phpmyadmin Install Time: $INSTALLTIME seconds" >> ${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log
+
+cecho "---------------------------------------------------------------" $boldyellow
+cecho "Total phpmyadmin Install Time: $INSTALLTIME seconds" $boldgreen
+cecho "phpmyadmin install log located at:" $boldgreen
+cecho "${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log" $boldgreen
+cecho "---------------------------------------------------------------" $boldyellow
+
 ;;
 *)
 	echo "$0 install"
