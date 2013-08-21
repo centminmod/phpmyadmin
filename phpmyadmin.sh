@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.0.3'
+VER='0.0.4'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -31,11 +31,11 @@ FPMPOOLDIR='/usr/local/nginx/conf/phpfpmd'
 CENTMINLOGDIR='/root/centminlogs'
 
 if [ ! -d "$CENTMINLOGDIR" ]; then
-mkdir $CENTMINLOGDIR
+mkdir -p $CENTMINLOGDIR
 fi
 
 if [ ! -d "$FPMPOOLDIR" ]; then
-mkdir $FPMPOOLDIR
+mkdir -p $FPMPOOLDIR
 fi
 
 # Setup Colours
@@ -274,12 +274,19 @@ if [[ ! -f /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf ]]; then
 	echo ""
 	cecho "touch /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" $boldgreen
 	touch /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf
+	touch /usr/local/nginx/conf/phpfpmd/empty.conf
 	echo ""
 
 CHECKPOOLDIR=$(grep ';include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf' /usr/local/etc/php-fpm.conf)
 
-if [[ ! -z "$CHECKPOOLDIR" ]]; then
-	sed -i 's/;include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/g' /usr/local/etc/php-fpm.conf
+CHECKPOOLDIRB=$(grep 'include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf' /usr/local/etc/php-fpm.conf)
+
+if [[ ! -z "$CHECKPOOLDIR" && -z "$CHECKPOOLDIRB" ]]; then
+sed -i 's/;include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/g' /usr/local/etc/php-fpm.conf
+fi
+
+if [[ -z "$CHECKPOOLDIRB" && -z "$CHECKPOOLDIR" ]]; then
+sed -i 's/process_control_timeout = 10s/process_control_timeout = 10s\ninclude=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/g' /usr/local/etc/php-fpm.conf
 fi
 
 CHECKPOOL=$(grep '\[phpmyadmin\]' /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf)
@@ -509,6 +516,7 @@ rm -rf ${BASEDIR}/${DIRNAME}
 rm -rf /root/tools/phpmyadmin_update.sh
 rm -rf /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf
 rm -rf /usr/local/nginx/conf/php_${DIRNAME}.conf
+rm -rf /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf
 rm -rf /usr/local/nginx/conf/htpassphpmyadmin
 rm -rf /usr/local/nginx/conf/phpmyadmin_https.conf
 rm -rf /usr/local/nginx/conf/phpmyadmin.conf
@@ -518,7 +526,7 @@ rm -rf ${BASEDIR}/${DIRNAME}
 rm -rf /root/tools/phpmyadmin_update.sh
 rm -rf /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf
 rm -rf /usr/local/nginx/conf/php_${DIRNAME}.conf
-#rm -rf /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf
+rm -rf /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf
 rm -rf /usr/local/nginx/conf/htpassphpmyadmin
 rm -rf /usr/local/nginx/conf/phpmyadmin_https.conf
 rm -rf /usr/local/nginx/conf/phpmyadmin.conf
@@ -553,7 +561,7 @@ cecho "at path ${BASEDIR}/${DIRNAME}" $boldgreen
 cecho "config.inc.php at: ${BASEDIR}/${DIRNAME}/config.inc.php" $boldgreen
 cecho "  WEB url: " $boldgreen
 echo ""
-cecho "  https://${SSLHNAME}/${DIRNAME}" $boldgreen
+cecho "  https://${SSLHNAME}/${DIRNAME}" $boldwhite
 echo ""
 cecho "Login with your MySQL root username / password" $boldgreen
 cecho "---------------------------------------------------------------" $boldyellow
