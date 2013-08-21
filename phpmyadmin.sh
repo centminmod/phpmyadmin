@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.0.2'
+VER='0.0.3'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -25,11 +25,17 @@ SSLHNAME=$(uname -n)
 
 VERSIONMINOR='04' # last 2 digits in Centmin Mod version i.e. 1.2.3-eva2000.04
 VERSIONALLOW="1.2.3-eva2000.${VERSIONMINOR}"
+
+FPMPOOLDIR='/usr/local/nginx/conf/phpfpmd'
 #################################################
 CENTMINLOGDIR='/root/centminlogs'
 
 if [ ! -d "$CENTMINLOGDIR" ]; then
 mkdir $CENTMINLOGDIR
+fi
+
+if [ ! -d "$FPMPOOLDIR" ]; then
+mkdir $FPMPOOLDIR
 fi
 
 # Setup Colours
@@ -155,7 +161,7 @@ chmod o-rw config.inc.php
 replace 'a8b7c6d' "${BLOWFISH}" -- config.inc.php
 
 sed -i 's/?>//g' config.inc.php
-echo "\$cfg['ForceSSL'] = 'true';" >> config.inc.php
+echo "\$cfg['ForceSSL'] = 'false';" >> config.inc.php
 echo "\$cfg['ExecTimeLimit'] = '14400';" >> config.inc.php
 echo "\$cfg['MemoryLimit'] = '0';" >> config.inc.php
 echo "\$cfg['ShowDbStructureCreation'] = 'true';" >> config.inc.php
@@ -212,7 +218,7 @@ cat /usr/local/nginx/conf/conf.d/virtual.conf
 
 cecho "---------------------------------------------------------------" $boldyellow
 
-if [[ "$STATICIP" = [yY] ]]; then
+if [[ "$STATICIP" = 'y' ]]; then
 
 cecho "STATIC IP configuration" $boldyellow
 
@@ -372,6 +378,18 @@ server {
 
 keepalive_timeout  1800;
 
+ client_body_buffer_size 256k;
+ client_body_timeout 1800s;
+ client_header_buffer_size 256k;
+## how long a connection has to complete sending
+## it's headers for request to be processed
+ client_header_timeout  60s;
+ client_max_body_size 512m;
+ connection_pool_size  512;
+ directio  512m;
+ ignore_invalid_headers on;
+ large_client_header_buffers 8 256k;
+
         ssl_certificate      /usr/local/nginx/conf/ssl/${SSLHNAME}.crt;
         ssl_certificate_key  /usr/local/nginx/conf/ssl/${SSLHNAME}.key;
         ssl_protocols SSLv3 TLSv1 TLSv1.1 TLSv1.2;
@@ -380,12 +398,13 @@ keepalive_timeout  1800;
         ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-RC4-SHA:ECDHE-RSA-AES128-SHA:AES128-GCM-SHA256:RC4:HIGH:!MD5:!aNULL:!EDH:!CAMELLIA;
         ssl_prefer_server_ciphers   on;
         add_header Alternate-Protocol  443:npn-spdy/2;
+        add_header X-Frame-Options SAMEORIGIN;
 
   # limit_conn limit_per_ip 16;
   # ssi  on;
 
-        access_log              /var/log/nginx/localhost.access.log     main buffer=32k;
-        error_log               /var/log/nginx/localhost.error.log      error;
+        access_log              /var/log/nginx/localhost_ssl.access.log     main buffer=32k;
+        error_log               /var/log/nginx/localhost_ssl.error.log      error;
 
 # ngx_pagespeed & ngx_pagespeed handler
 #include /usr/local/nginx/conf/pagespeed.conf;
@@ -403,6 +422,9 @@ keepalive_timeout  1800;
   include /usr/local/nginx/conf/errorpage.conf;
 }
 SSLEOF
+
+chmod 0666 /var/log/nginx/localhost_ssl.access.log
+chmod 0666 /var/log/nginx/localhost_ssl.error.log
 
 service nginx restart
 service php-fpm restart
@@ -458,6 +480,70 @@ fi
 }
 
 #################################################
+myadminremove() {
+
+if [[ ! -d "$UPDATEDIR" ]]; then
+	mkdir -p $UPDATEDIR
+fi
+
+if [[ -f "/root/tools/phpmyadmin_uninstall.sh" || ! -f "/root/tools/phpmyadmin_uninstall.sh" ]]; then
+cecho "---------------------------------------------------------------" $boldyellow
+cecho "Create uninstall script:" $boldgreen
+cecho "/root/tools/phpmyadmin_uninstall.sh" $boldgreen
+cecho "---------------------------------------------------------------" $boldyellow
+
+cat > "/root/tools/phpmyadmin_uninstall.sh" <<EOF
+#!/bin/bash
+DT=\$(date +"%d%m%y-%H%M%S")
+##############################################
+CENTMINLOGDIR='/root/centminlogs'
+
+if [ ! -d "$CENTMINLOGDIR" ]; then
+mkdir $CENTMINLOGDIR
+fi
+##############################################
+starttime=\$(date +%s.%N)
+{
+echo "
+rm -rf ${BASEDIR}/${DIRNAME}
+rm -rf /root/tools/phpmyadmin_update.sh
+rm -rf /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf
+rm -rf /usr/local/nginx/conf/php_${DIRNAME}.conf
+rm -rf /usr/local/nginx/conf/htpassphpmyadmin
+rm -rf /usr/local/nginx/conf/phpmyadmin_https.conf
+rm -rf /usr/local/nginx/conf/phpmyadmin.conf
+rm -rf /usr/local/nginx/conf/phpmyadmin_check"
+
+rm -rf ${BASEDIR}/${DIRNAME}
+rm -rf /root/tools/phpmyadmin_update.sh
+rm -rf /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf
+rm -rf /usr/local/nginx/conf/php_${DIRNAME}.conf
+#rm -rf /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf
+rm -rf /usr/local/nginx/conf/htpassphpmyadmin
+rm -rf /usr/local/nginx/conf/phpmyadmin_https.conf
+rm -rf /usr/local/nginx/conf/phpmyadmin.conf
+rm -rf /usr/local/nginx/conf/phpmyadmin_check
+sed -i '/include \/usr\/local\/nginx\/conf\/phpmyadmin.conf;'/d /usr/local/nginx/conf/conf.d/virtual.conf
+
+service nginx restart
+service php-fpm restart
+
+} 2>&1 | tee \${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log
+
+endtime=\$(date +%s.%N)
+
+INSTALLTIME=\$(echo "scale=2;\$endtime - \$starttime"|bc )
+echo "" >> \${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log 
+echo "Total phpmyadmin Update Time: \$INSTALLTIME seconds" >> \${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log
+EOF
+
+chmod 0700 /root/tools/phpmyadmin_uninstall.sh
+
+fi
+
+}
+
+#################################################
 myadminmsg() {
 
 echo ""
@@ -483,12 +569,20 @@ echo ""
 cecho "  15 01 * * * /root/tools/phpmyadmin_update.sh" $boldwhite
 echo ""
 cecho "---------------------------------------------------------------" $boldyellow
+cecho "phpmyadmin uninstall script at: /root/tools/phpmyadmin_uninstall.sh" $boldgreen
+echo ""
+cecho "  /root/tools/phpmyadmin_uninstall.sh" $boldwhite
+echo ""
+cecho "---------------------------------------------------------------" $boldyellow
 cecho "SSL vhost: /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf" $boldgreen
 cecho "php-fpm includes: /usr/local/nginx/conf/php_${DIRNAME}.conf" $boldgreen
 cecho "php-fpm pool conf: /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" $boldgreen
 cecho "dedicated php-fpm pool user: ${USERNAME}" $boldgreen
 cecho "dedicated php-fpm pool group: nginx" $boldgreen
 cecho "dedicated php error log: /var/log/php_myadmin_error.log" $boldgreen
+cecho "---------------------------------------------------------------" $boldyellow
+cecho "SSL vhost access log: /var/log/nginx/localhost_ssl.access.log" $boldgreen
+cecho "SSL vhost error log: /var/log/nginx/localhost_ssl.error.log" $boldgreen
 cecho "---------------------------------------------------------------" $boldyellow
 echo ""
 
@@ -507,6 +601,7 @@ starttime=$(date +%s.%N)
 	myadmininstall
 	sslvhost
 	myadminupdater
+	myadminremove
 	myadminmsg
 } 2>&1 | tee ${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log
 
