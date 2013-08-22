@@ -480,11 +480,11 @@ keepalive_timeout  1800;
 }
 SSLEOF
 
-chmod 0666 /var/log/nginx/localhost_ssl.access.log
-chmod 0666 /var/log/nginx/localhost_ssl.error.log
-
 service nginx restart
 service php-fpm restart
+
+chmod 0666 /var/log/nginx/localhost_ssl.access.log
+chmod 0666 /var/log/nginx/localhost_ssl.error.log
 
 }
 
