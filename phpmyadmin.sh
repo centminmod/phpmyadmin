@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.0.4'
+VER='0.0.5'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -26,9 +26,47 @@ SSLHNAME=$(uname -n)
 VERSIONMINOR='04' # last 2 digits in Centmin Mod version i.e. 1.2.3-eva2000.04
 VERSIONALLOW="1.2.3-eva2000.${VERSIONMINOR}"
 
-FPMPOOLDIR='/usr/local/nginx/conf/phpfpmd'
+#################################################
+# Memory calculations for dynamic memory limit determination
+TOTALMEM=$(cat /proc/meminfo | grep MemTotal | awk '{print $2}')
+TOTALMEMMB=`echo "scale=0;$TOTALMEM/1024" | bc`
+
+CHECKFREEMEM=$(cat /proc/meminfo | grep MemFree)
+if [[ "$CHECKFREEMEM" ]]; then
+FREEMEM=$(cat /proc/meminfo | grep MemFree | awk '{print $2}')
+FREEMEMMB=`echo "scale=0;$FREEMEM/1024" | bc`
+else
+FREEMEMMB='0'
+fi
+
+CHECKBUFFER=$(cat /proc/meminfo | grep Buffers)
+if [[ "$CHECKBUFFER" ]]; then
+BUFFERSMEM=$(cat /proc/meminfo | grep Buffers | awk '{print $2}')
+BUFFERSMB=`echo "scale=0;$BUFFERSMEM/1024" | bc`
+else
+BUFFERSMB='0'
+fi
+
+CHECKCACHED=$(cat /proc/meminfo | grep ^Cached)
+if [[ "$CHECKCACHED" ]]; then
+CACHEDMEM=$(cat /proc/meminfo | grep ^Cached | awk '{print $2}')
+CACHEDMB=`echo "scale=0;$CACHEDMEM/1024" | bc`
+else
+CACHEDMB='0'
+fi
+
+REALFREEMB=$(echo $FREEMEMMB+$BUFFERSMB+$CACHEDMB | bc)
+REALUSEDMEM=$(echo $TOTALMEMMB-$REALFREEMB | bc)
+
+# set php-fpm memory_limit to 4/9 th of available free memory
+MEMLIMIT=$(echo $REALFREEMB / 2.25 | bc)
+
+# echo "Total Mem: $TOTALMEMMB MB"
+# echo "Real Free Mem: $REALFREEMB MB"
+# echo "Mem Limit: $MEMLIMIT MB"
 #################################################
 CENTMINLOGDIR='/root/centminlogs'
+FPMPOOLDIR='/usr/local/nginx/conf/phpfpmd'
 
 if [ ! -d "$CENTMINLOGDIR" ]; then
 mkdir -p $CENTMINLOGDIR
@@ -117,6 +155,16 @@ if [[ -f /usr/local/nginx/conf/phpmyadmin_check ]]; then
 	cecho "---------------------------------------------------------------" $boldyellow
 	exit
 fi
+#################################################
+memlimitmsg() {
+echo ""
+cecho "Dynamically set PHP memory_limit based on available system memory..." $boldyellow
+echo ""
+cecho "Total Mem: $TOTALMEMMB MB" $boldyellow
+cecho "Real Free Mem: $REALFREEMB MB" $boldyellow
+cecho "Mem Limit: $MEMLIMIT MB" $boldyellow
+echo ""
+}
 #################################################
 usercreate() {
 
@@ -293,6 +341,8 @@ CHECKPOOL=$(grep '\[phpmyadmin\]' /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.c
 
 if [[ -z "$CHECKPOOL" ]]; then
 
+memlimitmsg
+
 cat >> "/usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" <<EOF
 [phpmyadmin]
 user = ${USERNAME}
@@ -330,7 +380,7 @@ php_admin_value[open_basedir] = ${BASEDIR}/${DIRNAME}:/tmp
 php_flag[display_errors] = off
 php_admin_value[error_log] = /var/log/php_myadmin_error.log
 php_admin_flag[log_errors] = on
-php_admin_value[memory_limit] = 256M
+php_admin_value[memory_limit] = ${MEMLIMIT}M
 php_admin_value[max_execution_time] = 1800
 php_admin_value[post_max_size] = 512M
 php_admin_value[upload_max_filesize] = 512M
