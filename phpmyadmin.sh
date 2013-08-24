@@ -15,7 +15,8 @@ BASEDIR='/usr/local/nginx/html'
 DIRNAME=$(echo "${RANDOM}_mysqladmin${RANDOM}")
 
 SALT=$(openssl rand 8 -base64)
-USER=$(echo "admin${SALT}")
+USERPREFIX='admin'
+USER=$(echo "${USERPREFIX}${SALT}")
 PASS=$(openssl rand 20 -base64)
 BLOWFISH=$(openssl rand 30 -base64)
 CURRENTIP=$(echo $SSH_CLIENT | awk '{print $1}')
@@ -266,7 +267,7 @@ cat /usr/local/nginx/conf/conf.d/virtual.conf
 
 cecho "---------------------------------------------------------------" $boldyellow
 
-if [[ "$STATICIP" = 'y' ]]; then
+if [[ "$STATICIP" = 'y' && ! -z "$CURRENTIP" ]]; then
 
 cecho "STATIC IP configuration" $boldyellow
 
