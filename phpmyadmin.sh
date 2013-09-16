@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.0.5'
+VER='0.0.6'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -149,6 +149,12 @@ if [[ "$VERCHECK" != "$VERSIONALLOW" && "$COMPARE" = '1' ]]; then
 	exit
 fi
 
+#if [[ "$1" = 'resetpwd' ]]; then
+#	rm -rf /usr/local/nginx/conf/phpmyadmin_check
+#fi
+
+#################################################
+checkphpmyadmin() {
 if [[ -f /usr/local/nginx/conf/phpmyadmin_check ]]; then
 	cecho "---------------------------------------------------------------" $boldyellow
 	cecho "detected phpmyadmin install that already exists" $boldgreen
@@ -156,6 +162,7 @@ if [[ -f /usr/local/nginx/conf/phpmyadmin_check ]]; then
 	cecho "---------------------------------------------------------------" $boldyellow
 	exit
 fi
+}
 #################################################
 memlimitmsg() {
 echo ""
@@ -179,6 +186,25 @@ usercreate() {
 
 }
 
+#################################################
+createpassword() {
+cecho "---------------------------------------------------------------" $boldyellow
+cecho "Create phpmyadmin htaccess user/pass..." $boldyellow
+cecho "python /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS" $boldgreen
+cecho "---------------------------------------------------------------" $boldyellow
+python /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS
+}
+
+#################################################
+htpassdetails() {
+echo ""
+cecho "phpmyadmin htaccess login details:" $boldgreen
+cecho "Username: $USER" $boldgreen
+cecho "Password: $PASS" $boldgreen
+cecho "Allowed IP address: ${CURRENTIP}" $boldgreen
+echo ""
+cecho "---------------------------------------------------------------" $boldyellow
+}
 #################################################
 myadmininstall() {
 
@@ -228,10 +254,7 @@ if [[ ! -f "/usr/local/nginx/conf/phpmyadmin.conf" ]]; then
 	cecho "Setup /usr/local/nginx/conf/phpmyadmin.conf ..." $boldgreen
 	cecho "---------------------------------------------------------------" $boldyellow
 
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "python /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
-python /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS 
+createpassword 
 
 #history -d $((HISTCMD-2))
 
@@ -241,7 +264,9 @@ echo "\cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME
 
 sed -i 's/fastcgi_pass   127.0.0.1:9000/#fastcgi_pass   127.0.0.1:9001/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
+if [[ -z "$(grep 'fastcgi_param HTTPS $server_https;' /usr/local/nginx/conf/php.conf)" ]]; then
 replace '#fastcgi_param HTTPS on;' 'fastcgi_param HTTPS on;' -- /usr/local/nginx/conf/php_${DIRNAME}.conf
+fi
 
 sed -i 's/#fastcgi_pass   unix:\/tmp\/php5-fpm.sock/fastcgi_pass   unix:\/tmp\/phpfpm_myadmin.sock/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
@@ -330,9 +355,13 @@ CHECKPOOLDIR=$(grep ';include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf' /usr/
 
 CHECKPOOLDIRB=$(grep 'include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf' /usr/local/etc/php-fpm.conf)
 
-if [[ ! -z "$CHECKPOOLDIR" && -z "$CHECKPOOLDIRB" ]]; then
+if [[ ! -z "$CHECKPOOLDIR" ]]; then
 sed -i 's/;include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/g' /usr/local/etc/php-fpm.conf
 fi
+
+#if [[ ! -z "$CHECKPOOLDIR" && -z "$CHECKPOOLDIRB" ]]; then
+#sed -i 's/;include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/g' /usr/local/etc/php-fpm.conf
+#fi
 
 if [[ -z "$CHECKPOOLDIRB" && -z "$CHECKPOOLDIR" ]]; then
 sed -i 's/process_control_timeout = 10s/process_control_timeout = 10s\ninclude=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/g' /usr/local/etc/php-fpm.conf
@@ -616,12 +645,7 @@ cecho "  https://${SSLHNAME}/${DIRNAME}" $boldwhite
 echo ""
 cecho "Login with your MySQL root username / password" $boldgreen
 cecho "---------------------------------------------------------------" $boldyellow
-echo ""
-cecho "Username: $USER" $boldgreen
-cecho "Password: $PASS" $boldgreen
-cecho "Allowed IP address: ${CURRENTIP}" $boldgreen
-echo ""
-cecho "---------------------------------------------------------------" $boldyellow
+htpassdetails
 cecho "phpmyadmin update script at: /root/tools/phpmyadmin_update.sh" $boldgreen
 cecho "Add your own cron job to automatically run the update script i.e." $boldgreen
 echo ""
@@ -651,6 +675,7 @@ echo "phpmyadmin_install='y'" > /usr/local/nginx/conf/phpmyadmin_check
 #################################################
 case "$1" in
 install)
+checkphpmyadmin
 starttime=$(date +%s.%N)
 {
 	#backup csf.conf
@@ -677,8 +702,14 @@ cecho "${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log" $boldgreen
 cecho "---------------------------------------------------------------" $boldyellow
 
 ;;
+resetpwd)
+cecho "---------------------------------------------------------------" $boldyellow
+createpassword
+htpassdetails
+;;
 *)
 	echo "$0 install"
+	echo "$0 resetpwd"
 ;;
 esac
 exit
