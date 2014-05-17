@@ -246,7 +246,7 @@ echo "?>" >> config.inc.php
 
 chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
 chown -R ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
-chmod g+s ${BASEDIR}/${DIRNAME}
+chmod g+rx ${BASEDIR}/${DIRNAME}
 
 if [[ ! -f "/usr/local/nginx/conf/phpmyadmin.conf" ]]; then
 
