@@ -381,6 +381,8 @@ group = nginx
 ;listen = 127.0.0.1:9001
 listen = /tmp/phpfpm_myadmin.sock
 listen.allowed_clients = 127.0.0.1
+listen.owner=${USERNAME}
+listen.group=nginx
 
 pm = ondemand
 pm.max_children = 5
