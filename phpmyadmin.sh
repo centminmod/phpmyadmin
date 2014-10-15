@@ -455,8 +455,8 @@ echo ""
 sleep 10
 
 openssl genrsa -out ${SSLHNAME}.key 1024
-openssl req -new -key ${SSLHNAME}.key -out ${SSLHNAME}.csr
-openssl x509 -req -days 36500 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt
+openssl req -new -key ${SSLHNAME}.key -sha256 -nodes -out ${SSLHNAME}.csr
+openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt
 
 cat > "/usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf"<<SSLEOF
 # https SSL SPDY phpmyadmin
@@ -481,13 +481,18 @@ keepalive_timeout  1800;
 
         ssl_certificate      /usr/local/nginx/conf/ssl/${SSLHNAME}.crt;
         ssl_certificate_key  /usr/local/nginx/conf/ssl/${SSLHNAME}.key;
-        ssl_protocols SSLv3 TLSv1 TLSv1.1 TLSv1.2;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
         ssl_session_cache      shared:SSL:10m;
         ssl_session_timeout  10m;
-        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-RC4-SHA:ECDHE-RSA-AES128-SHA:AES128-GCM-SHA256:RC4:HIGH:!MD5:!aNULL:!EDH:!CAMELLIA;
+        # mozilla recommended
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA:!CAMELLIA;
         ssl_prefer_server_ciphers   on;
-        add_header Alternate-Protocol  443:npn-spdy/2;
+        add_header Alternate-Protocol  443:npn-spdy/3;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubdomains;";
         add_header X-Frame-Options SAMEORIGIN;
+        spdy_headers_comp 6;
+        ssl_buffer_size 1400;
+        ssl_session_tickets on;
 
   # limit_conn limit_per_ip 16;
   # ssi  on;
