@@ -19,6 +19,7 @@ USERPREFIX='admin'
 USER=$(echo "${USERPREFIX}${SALT}")
 PASS=$(openssl rand 20 -base64)
 BLOWFISH=$(openssl rand 30 -base64)
+# BLOWFISH=$(pwgen -syn1 46)
 CURRENTIP=$(echo $SSH_CLIENT | awk '{print $1}')
 USERNAME='phpmyadmin'
 
@@ -75,6 +76,10 @@ fi
 
 if [ ! -d "$FPMPOOLDIR" ]; then
 mkdir -p $FPMPOOLDIR
+fi
+
+if [ ! -f /usr/bin/pwgen ]; then
+	yum -y -q install pwgen
 fi
 
 # Setup Colours
@@ -234,6 +239,7 @@ cp config.sample.inc.php config.inc.php
 chmod o-rw config.inc.php
 
 replace 'a8b7c6d' "${BLOWFISH}" -- config.inc.php
+sed -i "s|\['blowfish_secret'\] = ''|\['blowfish_secret'\] = '${BLOWFISH}'|g" config.inc.php
 
 sed -i 's/?>//g' config.inc.php
 echo "\$cfg['ForceSSL'] = 'false';" >> config.inc.php
