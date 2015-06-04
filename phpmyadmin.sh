@@ -320,7 +320,7 @@ location ^~ /${DIRNAME}/ {
 
 	auth_basic      "Private Access";
 	auth_basic_user_file  /usr/local/nginx/conf/htpassphpmyadmin;
-	#allow 127.0.0.1;
+	allow 127.0.0.1;
 	#allow ${CURRENTIP};
 	#deny all;
 }
