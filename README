@@ -1,3 +1,10 @@
 phpmyadmin.sh auto installer for Centmin Mod LEMP stack only
 
 Currently in beta testing. Install instructions at http://centminmod.com/addon_phpmyadmin.html
+
+Related log files for troubleshooting & diagnostics
+
+* /var/log/php-fpm/www-slowmyadmin.log
+* /var/log/php_myadmin_error.log
+* /var/log/nginx/localhost_ssl.access.log
+* /var/log/nginx/localhost_ssl.error.log
