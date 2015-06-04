@@ -237,7 +237,7 @@ replace 'a8b7c6d' "${BLOWFISH}" -- config.inc.php
 
 sed -i 's/?>//g' config.inc.php
 echo "\$cfg['ForceSSL'] = 'false';" >> config.inc.php
-echo "\$cfg['ExecTimeLimit'] = '14400';" >> config.inc.php
+echo "\$cfg['ExecTimeLimit'] = '28800';" >> config.inc.php
 echo "\$cfg['MemoryLimit'] = '0';" >> config.inc.php
 echo "\$cfg['ShowDbStructureCreation'] = 'true';" >> config.inc.php
 echo "\$cfg['ShowDbStructureLastUpdate'] = 'true';" >> config.inc.php
@@ -272,11 +272,11 @@ sed -i 's/#fastcgi_pass   unix:\/tmp\/php5-fpm.sock/fastcgi_pass   unix:\/tmp\/p
 
 # increase php-fpm timeouts
 
-sed -i 's/fastcgi_connect_timeout 60;/fastcgi_connect_timeout 1800;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/fastcgi_connect_timeout 60;/fastcgi_connect_timeout 3000;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
-sed -i 's/fastcgi_send_timeout 180;/fastcgi_send_timeout 1800;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/fastcgi_send_timeout 180;/fastcgi_send_timeout 3000;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
-sed -i 's/fastcgi_read_timeout 180;/fastcgi_read_timeout 1800;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/fastcgi_read_timeout 180;/fastcgi_read_timeout 3000;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
 cat > "/usr/local/nginx/conf/phpmyadmin.conf" <<EOF
 location ^~ /${DIRNAME}/ {
@@ -392,7 +392,7 @@ pm.min_spare_servers = 1
 pm.max_spare_servers = 3
 pm.max_requests = 500
 
-pm.process_idle_timeout = 1800s;
+pm.process_idle_timeout = 3000s;
 
 rlimit_files = 65536
 rlimit_core = 0
@@ -413,9 +413,9 @@ php_flag[display_errors] = off
 php_admin_value[error_log] = /var/log/php_myadmin_error.log
 php_admin_flag[log_errors] = on
 php_admin_value[memory_limit] = ${MEMLIMIT}M
-php_admin_value[max_execution_time] = 1800
-php_admin_value[post_max_size] = 512M
-php_admin_value[upload_max_filesize] = 512M
+php_admin_value[max_execution_time] = 3000
+php_admin_value[post_max_size] = 768M
+php_admin_value[upload_max_filesize] = 768M
 EOF
 
 if [[ ! -f /var/log/php_myadmin_error.log ]]; then
@@ -423,6 +423,13 @@ if [[ ! -f /var/log/php_myadmin_error.log ]]; then
 	chown ${USERNAME}:nginx /var/log/php_myadmin_error.log
 	chmod 0666 /var/log/php_myadmin_error.log
 	ls -lah /var/log/php_myadmin_error.log
+fi
+
+if [[ ! -f /var/log/php-fpm/www-slowmyadmin.log ]]; then
+	touch /var/log/php-fpm/www-slowmyadmin.log
+	chown ${USERNAME}:nginx /var/log/php-fpm/www-slowmyadmin.log
+	chmod 0666 /var/log/php-fpm/www-slowmyadmin.log
+	ls -lah /var/log/php-fpm/www-slowmyadmin.log
 fi
 
 fi # CHECKPOOL
@@ -465,10 +472,10 @@ server {
             server_name ${SSLHNAME};
             root   html;
 
-keepalive_timeout  1800;
+keepalive_timeout  3000;
 
  client_body_buffer_size 256k;
- client_body_timeout 1800s;
+ client_body_timeout 3000s;
  client_header_buffer_size 256k;
 ## how long a connection has to complete sending
 ## it's headers for request to be processed
