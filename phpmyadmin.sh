@@ -582,6 +582,20 @@ EOF
 
 chmod 0700 /root/tools/phpmyadmin_update.sh
 
+cecho "---------------------------------------------------------------" $boldyellow
+cecho "Create cronjob for auto updating phpmyadmin:" $boldgreen
+cecho "/root/tools/phpmyadmin_update.sh" $boldgreen
+cecho "---------------------------------------------------------------" $boldyellow
+
+
+if [[ -z "$(crontab -l 2>&1 | grep phpmyadmin_update.sh)" ]]; then
+    crontab -l > cronjoblist
+    echo "19 02 * * * /root/tools/phpmyadmin_update.sh" >> cronjoblist
+    crontab cronjoblist
+    rm -rf cronjoblist
+    crontab -l
+fi
+
 fi
 
 }
