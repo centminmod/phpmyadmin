@@ -519,7 +519,7 @@ keepalive_timeout  3000;
 #include /usr/local/nginx/conf/pagespeedstatslog.conf;
 
     location / {
-        return 302 http://$server_name$request_uri;
+        return 302 http://\$server_name\$request_uri;
     }
     
   include /usr/local/nginx/conf/phpmyadmin_https.conf;
