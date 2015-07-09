@@ -518,10 +518,6 @@ keepalive_timeout  3000;
 #include /usr/local/nginx/conf/pagespeedhandler.conf;
 #include /usr/local/nginx/conf/pagespeedstatslog.conf;
 
-  location / {
-
-
-  }
   include /usr/local/nginx/conf/phpmyadmin_https.conf;
   include /usr/local/nginx/conf/staticfiles.conf;
   include /usr/local/nginx/conf/php.conf;
