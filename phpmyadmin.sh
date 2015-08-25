@@ -70,6 +70,16 @@ MEMLIMIT=$(echo $REALFREEMB / 2.25 | bc)
 CENTMINLOGDIR='/root/centminlogs'
 FPMPOOLDIR='/usr/local/nginx/conf/phpfpmd'
 
+if [[ "$(nginx -V 2>&1 | grep -Eo 'with-http_v2_module')" = 'with-http_v2_module' ]]; then
+  HTTPTWO=y
+  LISTENOPT='ssl http2'
+  COMP_HEADER='#spdy_headers_comp 5'
+else
+  HTTPTWO=n
+  LISTENOPT='ssl spdy'
+  COMP_HEADER='spdy_headers_comp 5'
+fi
+
 if [ ! -d "$CENTMINLOGDIR" ]; then
 mkdir -p $CENTMINLOGDIR
 fi
@@ -474,7 +484,7 @@ openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.k
 cat > "/usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf"<<SSLEOF
 # https SSL SPDY phpmyadmin
 server {
-        listen 443 ssl spdy;
+        listen 443 $LISTENOPT;
             server_name ${SSLHNAME};
             root   html;
 
@@ -503,7 +513,7 @@ keepalive_timeout  3000;
         add_header Alternate-Protocol  443:npn-spdy/3;
         add_header Strict-Transport-Security "max-age=0; includeSubdomains;";
         add_header X-Frame-Options SAMEORIGIN;
-        spdy_headers_comp 6;
+        $COMP_HEADER;
         ssl_buffer_size 1400;
         ssl_session_tickets on;
 
