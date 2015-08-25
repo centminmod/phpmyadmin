@@ -477,8 +477,8 @@ cecho "---------------------------------------------------------------" $boldyel
 echo ""
 sleep 10
 
-openssl genrsa -out ${SSLHNAME}.key 1024
-openssl req -new -key ${SSLHNAME}.key -sha256 -nodes -out ${SSLHNAME}.csr
+openssl genrsa -out ${SSLHNAME}.key 2048
+openssl req -new -key ${SSLHNAME}.key -sha256 -nodes -out ${SSLHNAME}.csr -subj "/C=US/ST=California/L=Los Angeles/O=${SSLHNAME}/OU=IT/CN=${SSLHNAME}"
 openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt
 
 cat > "/usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf"<<SSLEOF
