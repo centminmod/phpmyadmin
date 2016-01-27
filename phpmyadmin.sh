@@ -16,8 +16,9 @@ DIRNAME=$(echo "${RANDOM}_mysqladmin${RANDOM}")
 
 SALT=$(openssl rand 8 -base64)
 USERPREFIX='admin'
-USER=$(echo "${USERPREFIX}${SALT}")
+USER=$(echo "${USERPREFIX}${SALT}" | sed -e 's|\/||g' -e 's|\+||g')
 PASS=$(openssl rand 20 -base64)
+PASS=$(echo "$PASS" | sed -e 's|\/||g' -e 's|\+||g')
 BLOWFISH=$(openssl rand 30 -base64)
 # BLOWFISH=$(pwgen -syn1 46)
 CURRENTIP=$(echo $SSH_CLIENT | awk '{print $1}')
