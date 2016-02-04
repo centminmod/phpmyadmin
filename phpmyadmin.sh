@@ -280,6 +280,7 @@ echo "\cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME
 \cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME}.conf
 
 sed -i 's/fastcgi_pass   127.0.0.1:9000/#fastcgi_pass   127.0.0.1:9001/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's|fastcgi_pass phpbackend|#fastcgi_pass phpbackend|g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
 if [[ -z "$(grep 'fastcgi_param HTTPS $server_https;' /usr/local/nginx/conf/php.conf)" ]]; then
 replace '#fastcgi_param HTTPS on;' 'fastcgi_param HTTPS on;' -- /usr/local/nginx/conf/php_${DIRNAME}.conf
