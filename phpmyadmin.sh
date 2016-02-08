@@ -259,6 +259,9 @@ echo "\$cfg['MemoryLimit'] = '0';" >> config.inc.php
 echo "\$cfg['ShowDbStructureCreation'] = 'true';" >> config.inc.php
 echo "\$cfg['ShowDbStructureLastUpdate'] = 'true';" >> config.inc.php
 echo "\$cfg['ShowDbStructureLastCheck'] = 'true';" >> config.inc.php
+echo "\$cfg['ShowPhpInfo'] = true;" >> config.inc.php
+echo "\$cfg['Export']['compression'] = 'gzip';" >> config.inc.php
+echo "\$$cfg['LoginCookieValidity'] = 1440;" >> config.inc.php
 echo "?>" >> config.inc.php
 
 chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
