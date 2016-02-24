@@ -242,9 +242,8 @@ fi
 	echo ""
 
 cd $BASEDIR
-git clone --depth=1 git://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
+git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
 cd $DIRNAME
-git checkout -t origin/STABLE
 
 cp config.sample.inc.php config.inc.php
 chmod o-rw config.inc.php
