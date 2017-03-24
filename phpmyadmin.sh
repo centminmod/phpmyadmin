@@ -171,7 +171,7 @@ fi
 
 #################################################
 checkphpmyadmin() {
-	if [[ "$(grep -rw server_name /usr/local/nginx/conf/conf.d/ | grep "$SSLHNAME" | wc -l)" -gt '1' ]]; then
+	if [[ "$(grep -rw server_name /usr/local/nginx/conf/conf.d/ | grep -w "$SSLHNAME" | wc -l)" -gt '1' ]]; then
 		cecho "---------------------------------------------------------------" $boldyellow
 		cecho "Warning: detected possible duplicate server_name entry" $boldgreen
 		cecho "main hostname vhost server_name value has to be unique" $boldgreen
