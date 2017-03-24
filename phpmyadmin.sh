@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.0.8'
+VER='0.0.9'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -171,6 +171,17 @@ fi
 
 #################################################
 checkphpmyadmin() {
+	if [[ "$(grep -rw server_name /usr/local/nginx/conf/conf.d/ | grep "$SSLHNAME" | wc -l)" -gt '1' ]]; then
+		cecho "---------------------------------------------------------------" $boldyellow
+		cecho "Warning: detected possible duplicate server_name entry" $boldgreen
+		cecho "main hostname vhost server_name value has to be unique" $boldgreen
+		cecho "and separate from any other nginx vhost site you addded" $boldgreen
+		cecho "Check your server_name in /usr/local/nginx/conf/conf.d/virtual.conf" $boldgreen
+		cecho "read Step 1 of Getting Started Guide for main hostname" $boldgreen
+		cecho "proper setup https://centminmod.com/getstarted.html" $boldgreen
+		cecho "---------------------------------------------------------------" $boldyellow
+		exit
+	fi
 if [[ -f /usr/local/nginx/conf/phpmyadmin_check ]]; then
 	cecho "---------------------------------------------------------------" $boldyellow
 	cecho "detected phpmyadmin install that already exists" $boldgreen
