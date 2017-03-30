@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.0.9'
+VER='0.1.0'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -255,6 +255,9 @@ fi
 cd $BASEDIR
 git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
 cd $DIRNAME
+
+wget -cnv https://getcomposer.org/composer.phar -O composer.phar
+php composer.phar update --no-dev
 
 cp config.sample.inc.php config.inc.php
 chmod o-rw config.inc.php
@@ -592,6 +595,9 @@ echo "cd ${BASEDIR}/${DIRNAME}"
 cd ${BASEDIR}/${DIRNAME}
 echo "git pull"
 git pull
+rm -rf composer.phar
+wget -cnv https://getcomposer.org/composer.phar -O composer.phar
+php composer.phar update --no-dev
 
 chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
 chown -R ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
