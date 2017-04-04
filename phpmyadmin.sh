@@ -30,6 +30,18 @@ VERSIONMINOR='04' # last 2 digits in Centmin Mod version i.e. 1.2.3-eva2000.04
 VERSIONALLOW="1.2.3-eva2000.${VERSIONMINOR}"
 
 #################################################
+# set locale temporarily to english
+# due to some non-english locale issues
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+export LANGUAGE=en_US.UTF-8
+export LC_CTYPE=en_US.UTF-8
+
+shopt -s expand_aliases
+for g in "" e f; do
+    alias ${g}grep="LC_ALL=C ${g}grep"  # speed-up grep, egrep, fgrep
+done
+
 # Memory calculations for dynamic memory limit determination
 TOTALMEM=$(cat /proc/meminfo | grep MemTotal | awk '{print $2}')
 TOTALMEMMB=`echo "scale=0;$TOTALMEM/1024" | bc`
@@ -499,6 +511,20 @@ openssl genrsa -out ${SSLHNAME}.key 2048
 openssl req -new -key ${SSLHNAME}.key -sha256 -nodes -out ${SSLHNAME}.csr -subj "/C=US/ST=California/L=Los Angeles/O=${SSLHNAME}/OU=IT/CN=${SSLHNAME}"
 openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt
 
+if [[ "$(nginx -V 2>&1 | grep LibreSSL | head -n1)" ]]; then
+	CHACHACIPHERS='EECDH+CHACHA20:EECDH+CHACHA20-draft:'
+elif [[ "$(nginx -V 2>&1 | grep OpenSSL | head -n1)" ]]; then
+	if [[ -f "${DIR_TMP}/openssl-${OPENSSL_VERSION}/crypto/chacha20poly1305/chacha20.c" ]]; then
+		CHACHACIPHERS='EECDH+CHACHA20:EECDH+CHACHA20-draft:'
+	elif [[ -f "${DIR_TMP}/openssl-${OPENSSL_VERSION}/crypto/chacha/chacha_enc.c" ]]; then
+		CHACHACIPHERS='EECDH+CHACHA20:EECDH+CHACHA20-draft:'
+	else
+		CHACHACIPHERS=""
+  fi
+else
+  CHACHACIPHERS=""
+fi
+
 cat > "/usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf"<<SSLEOF
 # https SSL SPDY phpmyadmin
 server {
@@ -526,7 +552,7 @@ keepalive_timeout  3000;
         ssl_session_cache      shared:SSL:10m;
         ssl_session_timeout  10m;
         # mozilla recommended
-        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA:!CAMELLIA;
+        ssl_ciphers ${CHACHACIPHERS}EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA256:EECDH+ECDSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+SHA384:EECDH+AES128:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS:!RC4:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA:!CAMELLIA;
         ssl_prefer_server_ciphers   on;
         #add_header Alternate-Protocol  443:npn-spdy/3;
         #add_header Strict-Transport-Security "max-age=0; includeSubdomains;";
