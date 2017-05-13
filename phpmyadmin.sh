@@ -564,7 +564,7 @@ keepalive_timeout  3000;
   # limit_conn limit_per_ip 16;
   # ssi  on;
 
-        access_log              /var/log/nginx/localhost_ssl.access.log     main buffer=32k;
+        access_log              /var/log/nginx/localhost_ssl.access.log     main;
         error_log               /var/log/nginx/localhost_ssl.error.log      error;
 
 # ngx_pagespeed & ngx_pagespeed handler
