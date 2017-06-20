@@ -438,7 +438,7 @@ pm.min_spare_servers = 1
 pm.max_spare_servers = 3
 pm.max_requests = 500
 
-pm.process_idle_timeout = 3000s;
+pm.process_idle_timeout = 3600s;
 
 rlimit_files = 65536
 rlimit_core = 0
@@ -459,9 +459,9 @@ php_flag[display_errors] = off
 php_admin_value[error_log] = /var/log/php_myadmin_error.log
 php_admin_flag[log_errors] = on
 php_admin_value[memory_limit] = ${MEMLIMIT}M
-php_admin_value[max_execution_time] = 3000
-php_admin_value[post_max_size] = 768M
-php_admin_value[upload_max_filesize] = 768M
+php_admin_value[max_execution_time] = 3600
+php_admin_value[post_max_size] = 1280M
+php_admin_value[upload_max_filesize] = 1280M
 EOF
 
 if [[ ! -f /var/log/php_myadmin_error.log ]]; then
