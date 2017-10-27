@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.0'
+VER='0.1.1'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -619,6 +619,7 @@ starttime=\$(date +%s.%N)
 {
 echo "cd ${BASEDIR}/${DIRNAME}"
 cd ${BASEDIR}/${DIRNAME}
+rm -rf composer.lock
 echo "git pull"
 git pull
 rm -rf composer.phar
