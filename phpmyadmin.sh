@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.1'
+VER='0.1.2'
 DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
@@ -607,6 +607,7 @@ cecho "---------------------------------------------------------------" $boldyel
 
 cat > "/root/tools/phpmyadmin_update.sh" <<EOF
 #!/bin/bash
+export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin"
 DT=\$(date +"%d%m%y-%H%M%S")
 ##############################################
 CENTMINLOGDIR='/root/centminlogs'
