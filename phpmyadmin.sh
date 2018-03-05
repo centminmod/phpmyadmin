@@ -15,8 +15,8 @@ BASEDIR='/usr/local/nginx/html'
 DIRNAME=$(echo "${RANDOM}_mysqladmin${RANDOM}")
 
 SALT=$(openssl rand 8 -base64)
-USERPREFIX='admin'
-USER=$(echo "${USERPREFIX}${SALT}" | sed -e 's|\/||g' -e 's|\+||g')
+USERPREFIX='shadowadmin'
+USER="${USERPREFIX}"
 PASS=$(openssl rand 20 -base64)
 PASS=$(echo "$PASS" | sed -e 's|\/||g' -e 's|\+||g')
 BLOWFISH=$(openssl rand 30 -base64)
