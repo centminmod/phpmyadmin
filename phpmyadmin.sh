@@ -12,7 +12,7 @@ DT=`date +"%d%m%y-%H%M%S"`
 
 UPDATEDIR='/root/tools'
 BASEDIR='/usr/local/nginx/html'
-DIRNAME=$(echo "${RANDOM}_mysqladmin${RANDOM}")
+DIRNAME=$(echo "mysqladmin")
 
 SALT=$(openssl rand 8 -base64)
 USERPREFIX='shadowadmin'
