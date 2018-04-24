@@ -7,8 +7,8 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.2'
-DT=`date +"%d%m%y-%H%M%S"`
+VER='0.1.3'
+DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
 BASEDIR='/usr/local/nginx/html'
@@ -137,49 +137,45 @@ echo -e "$color$message" ; $Reset
 return
 }
 #################################################
-VERCHECK=$(cat /etc/centminmod-release)
-MINORVER=$(cat /etc/centminmod-release | awk -F "." '{print $4}')
-COMPARE=`expr $MINORVER \< $VERSIONMINOR`
+# VERCHECK=$(cat /etc/centminmod-release)
+# MINORVER=$(cat /etc/centminmod-release | awk -F "." '{print $3}')
+# COMPARE=`expr $MINORVER \< $VERSIONMINOR`
 
-if [[ "$VERCHECK" != "$VERSIONALLOW" && "$COMPARE" = '1' ]]; then
-	cecho "------------------------------------------------------------------------------" $boldgreen
-	cecho "  $0 script requires centmin.sh from Centmin Mod" $boldyellow
-	cecho "  version: $VERSIONALLOW + recompile PHP (menu option #5)" $boldyellow
-	echo ""
-	cecho "  The following steps are required:" $boldyellow
-	echo ""
-	cecho "  1. Download and extract centmin-${VERSIONALLOW}.zip" $boldgreen
-	cecho "     As per instructions at http://centminmod.com/download.html" $boldgreen
-	cecho "  2. Run the updated centmin.sh script version"  $boldgreen
-	echo ""
-	cecho "      ./centmin.sh"  $boldwhite
-	echo ""
-	cecho "  3. Run menu option #5 to recompile PHP entering either the"  $boldgreen
-	cecho "     same PHP version or newer PHP  5.3.x or 5.4.x version"  $boldgreen
-	cecho "  4. Download latest version phpmyadmin.sh Addon script from"  $boldgreen
-	cecho "     http://centminmod.com/centminmodparts/addons/phpmyadmin.sh"  $boldgreen
-	cecho "     Give script appropriate permissions via command:"  $boldgreen
-	echo ""
-	cecho "     chmod 0700 /full/path/to/where/you/downloaded/phpmyadmin.sh"  $boldwhite
-	echo ""
-	cecho "  5. Add port 9418 to CSF Firewall /etc/csf/csf.conf append 9418 to existing"  $boldgreen
-	cecho "     TCP_IN / TCP_OUT list of ports. Then restart CSF Firewall via command:"  $boldgreen
-	echo ""
-	cecho "     csf -r"  $boldwhite
-	echo ""
-	cecho "  6. Run phpmyadmin.sh script via commands:"  $boldgreen
-	echo ""
-	cecho "     cd /full/path/to/where/you/downloaded/"  $boldwhite
-	cecho "     ./phpmyadmin.sh install"  $boldwhite
-	#echo ""
-	#cecho "  Aborting script..." $boldyellow
-	cecho "------------------------------------------------------------------------------" $boldgreen
-	exit
-fi
-
-#if [[ "$1" = 'resetpwd' ]]; then
-#	rm -rf /usr/local/nginx/conf/phpmyadmin_check
-#fi
+# if [[ "$VERCHECK" != "$VERSIONALLOW" && "$COMPARE" = '1' ]]; then
+# 	cecho "------------------------------------------------------------------------------" $boldgreen
+# 	cecho "  $0 script requires centmin.sh from Centmin Mod" $boldyellow
+# 	cecho "  version: $VERSIONALLOW + recompile PHP (menu option #5)" $boldyellow
+# 	echo ""
+# 	cecho "  The following steps are required:" $boldyellow
+# 	echo ""
+# 	cecho "  1. Download and extract centmin-${VERSIONALLOW}.zip" $boldgreen
+# 	cecho "     As per instructions at http://centminmod.com/download.html" $boldgreen
+# 	cecho "  2. Run the updated centmin.sh script version"  $boldgreen
+# 	echo ""
+# 	cecho "      ./centmin.sh"  $boldwhite
+# 	echo ""
+# 	cecho "  3. Run menu option #5 to recompile PHP entering either the"  $boldgreen
+# 	cecho "     same PHP version or newer PHP  5.3.x or 5.4.x version"  $boldgreen
+# 	cecho "  4. Download latest version phpmyadmin.sh Addon script from"  $boldgreen
+# 	cecho "     http://centminmod.com/centminmodparts/addons/phpmyadmin.sh"  $boldgreen
+# 	cecho "     Give script appropriate permissions via command:"  $boldgreen
+# 	echo ""
+# 	cecho "     chmod 0700 /full/path/to/where/you/downloaded/phpmyadmin.sh"  $boldwhite
+# 	echo ""
+# 	cecho "  5. Add port 9418 to CSF Firewall /etc/csf/csf.conf append 9418 to existing"  $boldgreen
+# 	cecho "     TCP_IN / TCP_OUT list of ports. Then restart CSF Firewall via command:"  $boldgreen
+# 	echo ""
+# 	cecho "     csf -r"  $boldwhite
+# 	echo ""
+# 	cecho "  6. Run phpmyadmin.sh script via commands:"  $boldgreen
+# 	echo ""
+# 	cecho "     cd /full/path/to/where/you/downloaded/"  $boldwhite
+# 	cecho "     ./phpmyadmin.sh install"  $boldwhite
+# 	#echo ""
+# 	#cecho "  Aborting script..." $boldyellow
+# 	cecho "------------------------------------------------------------------------------" $boldgreen
+# 	exit
+# fi
 
 #################################################
 checkphpmyadmin() {
