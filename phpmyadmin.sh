@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.3'
+VER='0.1.4'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -211,7 +211,7 @@ echo ""
 #################################################
 usercreate() {
 
-	useradd -s /sbin/nologin -d /home/${USERNAME}/ -G nginx ${USERNAME}
+	/usr/sbin/useradd -s /sbin/nologin -d /home/${USERNAME}/ -G nginx ${USERNAME}
 	USERID=$(id ${USERNAME})
 	cecho "---------------------------------------------------------------" $boldgreen
 	cecho "Create User: $USERNAME" $boldyellow
