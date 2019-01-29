@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.4'
+VER='0.1.5'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -305,6 +305,7 @@ echo "\cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME
 
 sed -i 's/fastcgi_pass   127.0.0.1:9000/#fastcgi_pass   127.0.0.1:9001/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 sed -i 's|fastcgi_pass phpbackend|#fastcgi_pass phpbackend|g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's|fastcgi_pass dft_php|#fastcgi_pass dft_php|g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
 if [[ -z "$(grep 'fastcgi_param HTTPS $server_https;' /usr/local/nginx/conf/php.conf)" ]]; then
 replace '#fastcgi_param HTTPS on;' 'fastcgi_param HTTPS on;' -- /usr/local/nginx/conf/php_${DIRNAME}.conf
