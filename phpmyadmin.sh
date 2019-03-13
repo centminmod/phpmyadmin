@@ -652,7 +652,7 @@ if [[ -z "$(crontab -l 2>&1 | grep phpmyadmin_update.sh)" ]]; then
     crontab -l > cronjoblist
     mkdir -p /etc/centminmod/cronjobs
     cp cronjoblist /etc/centminmod/cronjobs/cronjoblist-before-phpmyadmin-setup.txt
-    echo "19 02 * * * /root/tools/phpmyadmin_update.sh" >> cronjoblist
+    echo "19 02 * * * /root/tools/phpmyadmin_update.sh >/dev/null 2>&1" >> cronjoblist
     cp cronjoblist /etc/centminmod/cronjobs/cronjoblist-after-phpmyadmin-setup.txt
     crontab cronjoblist
     rm -rf cronjoblist
