@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.5'
+VER='0.1.6'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -22,7 +22,7 @@ PASS=$(echo "$PASS" | sed -e 's|\/||g' -e 's|\+||g')
 BLOWFISH=$(openssl rand 30 -base64)
 # BLOWFISH=$(pwgen -syn1 46)
 CURRENTIP=$(echo $SSH_CLIENT | awk '{print $1}')
-USERNAME='phpmyadmin'
+USERNAME='nginx'
 
 SSLHNAME=$(uname -n)
 
@@ -211,13 +211,15 @@ echo ""
 #################################################
 usercreate() {
 
-	/usr/sbin/useradd -s /sbin/nologin -d /home/${USERNAME}/ -G nginx ${USERNAME}
-	USERID=$(id ${USERNAME})
-	cecho "---------------------------------------------------------------" $boldgreen
-	cecho "Create User: $USERNAME" $boldyellow
-	cecho "$USERID" $boldyellow
-	cecho "---------------------------------------------------------------" $boldgreen
-	echo ""
+  if [[ "$USERNAME" != 'nginx' ]]; then
+	 /usr/sbin/useradd -s /sbin/nologin -d /home/${USERNAME}/ -G nginx ${USERNAME}
+	 USERID=$(id ${USERNAME})
+	 cecho "---------------------------------------------------------------" $boldgreen
+	 cecho "Create User: $USERNAME" $boldyellow
+	 cecho "$USERID" $boldyellow
+	 cecho "---------------------------------------------------------------" $boldgreen
+	 echo ""
+  fi
 
 }
 
@@ -303,15 +305,17 @@ echo ""
 echo "\cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME}.conf"
 \cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME}.conf
 
-sed -i 's/fastcgi_pass   127.0.0.1:9000/#fastcgi_pass   127.0.0.1:9001/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/fastcgi_pass   127.0.0.1:9000/fastcgi_pass   127.0.0.1:9991/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/#fastcgi_pass   127.0.0.1:9991/fastcgi_pass   127.0.0.1:9991/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 sed -i 's|fastcgi_pass phpbackend|#fastcgi_pass phpbackend|g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 sed -i 's|fastcgi_pass dft_php|#fastcgi_pass dft_php|g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's|fastcgi_keep_conn on|#fastcgi_keep_conn on|' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
 if [[ -z "$(grep 'fastcgi_param HTTPS $server_https;' /usr/local/nginx/conf/php.conf)" ]]; then
 replace '#fastcgi_param HTTPS on;' 'fastcgi_param HTTPS on;' -- /usr/local/nginx/conf/php_${DIRNAME}.conf
 fi
 
-sed -i 's/#fastcgi_pass   unix:\/tmp\/php5-fpm.sock/fastcgi_pass   unix:\/tmp\/phpfpm_myadmin.sock/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+# sed -i 's/#fastcgi_pass   unix:\/tmp\/php5-fpm.sock/fastcgi_pass   unix:\/tmp\/phpfpm_myadmin.sock/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
 
 # increase php-fpm timeouts
 
@@ -421,8 +425,8 @@ cat >> "/usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" <<EOF
 user = ${USERNAME}
 group = nginx
 
-;listen = 127.0.0.1:9001
-listen = /tmp/phpfpm_myadmin.sock
+listen = 127.0.0.1:9991
+;listen = /tmp/phpfpm_myadmin.sock
 listen.allowed_clients = 127.0.0.1
 listen.owner=${USERNAME}
 listen.group=nginx
