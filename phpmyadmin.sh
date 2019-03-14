@@ -219,6 +219,10 @@ usercreate() {
 	 cecho "$USERID" $boldyellow
 	 cecho "---------------------------------------------------------------" $boldgreen
 	 echo ""
+	elif [[ "$USERNAME" = 'nginx' ]]; then
+		cecho "---------------------------------------------------------------" $boldgreen
+		cecho "User $USERNAME already exists" $boldyellow
+		cecho "---------------------------------------------------------------" $boldgreen
   fi
 
 }
