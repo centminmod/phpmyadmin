@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.6'
+VER='0.1.7'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -512,9 +512,49 @@ cecho "---------------------------------------------------------------" $boldyel
 echo ""
 sleep 10
 
-openssl genrsa -out ${SSLHNAME}.key 2048
-openssl req -new -key ${SSLHNAME}.key -sha256 -nodes -out ${SSLHNAME}.csr -subj "/C=US/ST=California/L=Los Angeles/O=${SSLHNAME}/OU=IT/CN=${SSLHNAME}"
-openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt
+cat > /tmp/req.cnf <<EOF
+[req]
+default_bits       = 2048
+distinguished_name = req_distinguished_name
+req_extensions     = v3_req
+prompt = no
+[req_distinguished_name]
+C = US
+ST = California
+L = Los Angeles
+O = ${SSLHNAME}
+OU = ${SSLHNAME}
+CN = ${SSLHNAME}
+[v3_req]
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = ${SSLHNAME}
+DNS.2 = *.${SSLHNAME}
+EOF
+
+cat > /tmp/v3ext.cnf <<EOF
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = ${SSLHNAME}
+DNS.2 = *.${SSLHNAME}
+EOF
+
+# Create the certificate signing request
+echo "openssl req -new -newkey rsa:2048 -sha256 -nodes -out ${SSLHNAME}.csr -keyout ${SSLHNAME}.key -config /tmp/req.cnf"
+openssl req -new -newkey rsa:2048 -sha256 -nodes -out ${SSLHNAME}.csr -keyout ${SSLHNAME}.key -config /tmp/req.cnf
+echo "openssl req -noout -text -in ${SSLHNAME}.csr | grep DNS"
+openssl req -noout -text -in ${SSLHNAME}.csr | grep DNS
+echo "openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt -extfile /tmp/v3ext.cnf"
+openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt -extfile /tmp/v3ext.cnf
+
+rm -f /tmp/req.cnf
+rm -f /tmp/v3ext.cnf
 
 if [[ "$(nginx -V 2>&1 | grep LibreSSL | head -n1)" ]]; then
 	CHACHACIPHERS='EECDH+CHACHA20:EECDH+CHACHA20-draft:'
