@@ -267,11 +267,19 @@ fi
 	echo ""
 
 cd $BASEDIR
-git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
+#git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
+git clone -b RELEASE_4_9_3 --depth=1 https://github.com/phpmyadmin/phpmyadmin $DIRNAME
+sleep 2
+pushd /usr/local/nginx/html/${DIRNAME}
+git checkout -b RELEASE_4_9_3
+git branch
+popd
+
 cd $DIRNAME
 
 wget -cnv https://getcomposer.org/composer.phar -O composer.phar
 php composer.phar update --no-dev
+
 # curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo
 # yum -y install yarn
 if [ ! -f "$(which npm)" ]; then
