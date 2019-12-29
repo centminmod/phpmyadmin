@@ -8,3 +8,43 @@ Related log files for troubleshooting & diagnostics
 * /var/log/php_myadmin_error.log
 * /var/log/nginx/localhost_ssl.access.log
 * /var/log/nginx/localhost_ssl.error.log
+
+### Uninstall phpmyadmin.sh previously installed phpmyadmin instance
+
+```
+/root/tools/phpmyadmin_uninstall.sh
+```
+
+### To Uninstall phpmyadmin.sh installed phpmyadmin & reinstall phpmyadmin 4.9.3 older version
+
+```
+# uninstall existing phpmyadmin install
+/root/tools/phpmyadmin_uninstall.sh
+
+# download phpmyadmin-4.9.sh renamed as phpmyadmin.sh
+cd /usr/local/src/centminmod/addons
+wget --no-check-certificate https://github.com/centminmod/phpmyadmin/raw/master/phpmyadmin-4.9.sh -O phpmyadmin.sh
+
+# permissions
+chmod 0700 /usr/local/src/centminmod/addons/phpmyadmin.sh
+
+# install phpmyadmin 4.9.3
+./phpmyadmin.sh install
+```
+
+### To Uninstall phpmyadmin.sh installed phpmyadmin & reinstall phpmyadmin latest 5.0.x stable version
+
+```
+# uninstall existing phpmyadmin install
+/root/tools/phpmyadmin_uninstall.sh
+
+# download phpmyadmin.sh
+cd /usr/local/src/centminmod/addons
+wget --no-check-certificate https://github.com/centminmod/phpmyadmin/raw/master/phpmyadmin.sh -O phpmyadmin.sh
+
+# permissions
+chmod 0700 /usr/local/src/centminmod/addons/phpmyadmin.sh
+
+# install phpmyadmin lastest stable
+./phpmyadmin.sh install
+```
