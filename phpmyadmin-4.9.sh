@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.7'
+VER='0.1.8'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -280,14 +280,18 @@ cd $DIRNAME
 wget -cnv https://getcomposer.org/composer.phar -O composer.phar
 php composer.phar update --no-dev
 
-# curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo
-# yum -y install yarn
 if [ ! -f "$(which npm)" ]; then
 	/usr/local/src/centminmod/addons/nodejs.sh install
+fi
+if [ ! -f /usr/bin/yarn ]; then
 	npm install --global yarn
 fi
 # https://docs.phpmyadmin.net/en/latest/setup.html#installing-from-git
+if [ ! -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
 yarn install
+elif [ -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
+	yarn run --silent css-compile --quiet --style=compressed
+fi
 
 cp config.sample.inc.php config.inc.php
 chmod o-rw config.inc.php
@@ -296,7 +300,7 @@ replace 'a8b7c6d' "${BLOWFISH}" -- config.inc.php
 sed -i "s|\['blowfish_secret'\] = ''|\['blowfish_secret'\] = '${BLOWFISH}'|g" config.inc.php
 
 sed -i 's/?>//g' config.inc.php
-echo "\$cfg['ForceSSL'] = 'false';" >> config.inc.php
+echo "\$cfg['ForceSSL'] = 'true';" >> config.inc.php
 echo "\$cfg['ExecTimeLimit'] = '28800';" >> config.inc.php
 echo "\$cfg['MemoryLimit'] = '0';" >> config.inc.php
 echo "\$cfg['ShowDbStructureCreation'] = 'true';" >> config.inc.php
@@ -688,6 +692,18 @@ rm -rf composer.phar
 wget -cnv https://getcomposer.org/composer.phar -O composer.phar
 php composer.phar update --no-dev
 
+if [ ! -f "\$(which npm)" ]; then
+	/usr/local/src/centminmod/addons/nodejs.sh install
+fi
+if [ ! -f /usr/bin/yarn ]; then
+	npm install --global yarn
+fi
+# https://docs.phpmyadmin.net/en/latest/setup.html#installing-from-git
+if [ ! -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
+	yarn install
+elif [ -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
+	yarn run --silent css-compile --quiet --style=compressed
+fi
 chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
 chown -R ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
 
