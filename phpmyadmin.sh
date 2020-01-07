@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.8'
+VER='0.1.9'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -293,7 +293,6 @@ replace 'a8b7c6d' "${BLOWFISH}" -- config.inc.php
 sed -i "s|\['blowfish_secret'\] = ''|\['blowfish_secret'\] = '${BLOWFISH}'|g" config.inc.php
 
 sed -i 's/?>//g' config.inc.php
-echo "\$cfg['ForceSSL'] = 'true';" >> config.inc.php
 echo "\$cfg['ExecTimeLimit'] = '28800';" >> config.inc.php
 echo "\$cfg['MemoryLimit'] = '0';" >> config.inc.php
 echo "\$cfg['ShowDbStructureCreation'] = 'true';" >> config.inc.php
