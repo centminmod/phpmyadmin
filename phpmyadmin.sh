@@ -1,7 +1,7 @@
 #!/bin/bash
 #################################################
 # phpmyadmin installer for Centmin Mod centminmod.com
-# written by George Liu (eva2000) vbtechsupport.com
+# written by George Liu (eva2000)
 #################################################
 # If you have a fairly static IP address that doesn't change often
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
