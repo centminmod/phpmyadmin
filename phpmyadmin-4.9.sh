@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.9'
+VER='0.2.0'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -268,10 +268,10 @@ fi
 
 cd $BASEDIR
 #git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
-git clone -b RELEASE_4_9_3 --depth=1 https://github.com/phpmyadmin/phpmyadmin $DIRNAME
+git clone -b QA_4_9 --depth=1 https://github.com/phpmyadmin/phpmyadmin $DIRNAME
 sleep 2
 pushd /usr/local/nginx/html/${DIRNAME}
-git checkout -b RELEASE_4_9_3
+git checkout -b QA_4_9_local
 git branch
 popd
 
