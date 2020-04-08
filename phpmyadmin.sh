@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.1.9'
+VER='0.2.0'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -271,7 +271,7 @@ git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRN
 cd $DIRNAME
 
 wget -cnv https://getcomposer.org/composer.phar -O composer.phar
-php composer.phar update --no-dev
+echo y | php composer.phar update --no-dev
 
 if [ ! -f "$(which npm)" ]; then
 	/usr/local/src/centminmod/addons/nodejs.sh install
@@ -682,7 +682,7 @@ echo "git pull"
 git pull
 rm -rf composer.phar
 wget -cnv https://getcomposer.org/composer.phar -O composer.phar
-php composer.phar update --no-dev
+echo y | php composer.phar update --no-dev
 
 if [ ! -f "\$(which npm)" ]; then
 	/usr/local/src/centminmod/addons/nodejs.sh install

@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.2.0'
+VER='0.2.1'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -278,7 +278,7 @@ popd
 cd $DIRNAME
 
 wget -cnv https://getcomposer.org/composer.phar -O composer.phar
-php composer.phar update --no-dev
+echo y | php composer.phar update --no-dev
 
 if [ ! -f "$(which npm)" ]; then
 	/usr/local/src/centminmod/addons/nodejs.sh install
@@ -689,7 +689,7 @@ echo "git pull"
 git pull
 rm -rf composer.phar
 wget -cnv https://getcomposer.org/composer.phar -O composer.phar
-php composer.phar update --no-dev
+echo y | php composer.phar update --no-dev
 
 if [ ! -f "\$(which npm)" ]; then
 	/usr/local/src/centminmod/addons/nodejs.sh install
