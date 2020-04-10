@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.2.0'
+VER='0.2.1'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -270,7 +270,7 @@ cd $BASEDIR
 git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
 cd $DIRNAME
 
-wget -cnv https://getcomposer.org/composer.phar -O composer.phar
+wget -cnv https://getcomposer.org/download/1.10.4/composer.phar -O composer.phar
 echo y | php composer.phar update --no-dev
 
 if [ ! -f "$(which npm)" ]; then
@@ -681,7 +681,7 @@ rm -rf composer.lock
 echo "git pull"
 git pull
 rm -rf composer.phar
-wget -cnv https://getcomposer.org/composer.phar -O composer.phar
+wget -cnv https://getcomposer.org/download/1.10.4/composer.phar -O composer.phar
 echo y | php composer.phar update --no-dev
 
 if [ ! -f "\$(which npm)" ]; then
