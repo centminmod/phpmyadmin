@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.2.2'
+VER='0.2.3'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -270,7 +270,7 @@ cd $BASEDIR
 git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
 cd $DIRNAME
 
-wget -cnv https://getcomposer.org/download/1.10.4/composer.phar -O composer.phar
+wget -cnv https://getcomposer.org/composer-stable.phar -O composer.phar
 echo y | php composer.phar update --no-dev
 
 if [ ! -f "$(which npm)" ]; then
@@ -281,7 +281,7 @@ if [ ! -f /usr/bin/yarn ]; then
 fi
 # https://docs.phpmyadmin.net/en/latest/setup.html#installing-from-git
 if [ ! -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
-yarn install
+	yarn install --production
 elif [ -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
 	yarn run --silent css-compile --quiet --style=compressed
 fi
@@ -683,7 +683,7 @@ git stash
 echo "git pull"
 git pull
 rm -rf composer.phar
-wget -cnv https://getcomposer.org/download/1.10.4/composer.phar -O composer.phar
+wget -cnv https://getcomposer.org/composer-stable.phar -O composer.phar
 echo y | php composer.phar update --no-dev
 
 if [ ! -f "\$(which npm)" ]; then
@@ -694,7 +694,7 @@ if [ ! -f /usr/bin/yarn ]; then
 fi
 # https://docs.phpmyadmin.net/en/latest/setup.html#installing-from-git
 if [ ! -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
-	yarn install
+	yarn install --production
 elif [ -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
 	yarn run --silent css-compile --quiet --style=compressed
 fi
