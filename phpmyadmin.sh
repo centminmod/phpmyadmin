@@ -7,19 +7,19 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.2.3'
+VER='0.2.4'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
 BASEDIR='/usr/local/nginx/html'
 DIRNAME=$(echo "${RANDOM}_mysqladmin${RANDOM}")
 
-SALT=$(openssl rand 8 -base64)
+SALT=$(openssl rand -base64 8)
 USERPREFIX='admin'
 USER=$(echo "${USERPREFIX}${SALT}" | sed -e 's|\/||g' -e 's|\+||g')
-PASS=$(openssl rand 20 -base64)
+PASS=$(openssl rand -base64 20)
 PASS=$(echo "$PASS" | sed -e 's|\/||g' -e 's|\+||g')
-BLOWFISH=$(openssl rand 30 -base64)
+BLOWFISH=$(openssl rand -base64 32 | cut -c1-32)
 # BLOWFISH=$(pwgen -syn1 46)
 CURRENTIP=$(echo $SSH_CLIENT | awk '{print $1}')
 USERNAME='nginx'
