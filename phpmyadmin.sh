@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.2.4'
+VER='0.2.5'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -28,7 +28,7 @@ SSLHNAME=$(uname -n)
 
 VERSIONMINOR='04' # last 2 digits in Centmin Mod version i.e. 1.2.3-eva2000.04
 VERSIONALLOW="1.2.3-eva2000.${VERSIONMINOR}"
-
+YARN_TMPDIR='/home/yarntmp-phpmyadmin'
 #################################################
 # set locale temporarily to english
 # due to some non-english locale issues
@@ -83,6 +83,11 @@ MEMLIMIT=$(echo $REALFREEMB / 2.25 | bc)
 CENTMINLOGDIR='/root/centminlogs'
 FPMPOOLDIR='/usr/local/nginx/conf/phpfpmd'
 
+if [ ! -d "$YARN_TMPDIR" ]; then
+	mkdir -p "$YARN_TMPDIR"
+	chmod 1777 "$YARN_TMPDIR"
+	export TMPDIR="$YARN_TMPDIR"
+fi
 if [[ "$(nginx -V 2>&1 | grep -Eo 'with-http_v2_module')" = 'with-http_v2_module' ]]; then
   HTTPTWO=y
   LISTENOPT='ssl http2'
@@ -277,13 +282,13 @@ if [ ! -f "$(which npm)" ]; then
 	/usr/local/src/centminmod/addons/nodejs.sh install
 fi
 if [ ! -f /usr/bin/yarn ]; then
-	npm install --global yarn
+	npm install --location=global yarn
 fi
 # https://docs.phpmyadmin.net/en/latest/setup.html#installing-from-git
 if [ ! -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
 	yarn install --production
 elif [ -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
-	yarn run --silent css-compile --quiet --style=compressed
+	yarn install --production
 fi
 
 cp config.sample.inc.php config.inc.php
@@ -666,11 +671,17 @@ cat > "/root/tools/phpmyadmin_update.sh" <<EOF
 #!/bin/bash
 export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin"
 DT=\$(date +"%d%m%y-%H%M%S")
+YARN_TMPDIR='/home/yarntmp-phpmyadmin'
 ##############################################
 CENTMINLOGDIR='/root/centminlogs'
 
 if [ ! -d "$CENTMINLOGDIR" ]; then
-mkdir $CENTMINLOGDIR
+  mkdir -p $CENTMINLOGDIR
+fi
+if [ ! -d "$YARN_TMPDIR" ]; then
+	mkdir -p "$YARN_TMPDIR"
+	chmod 1777 "$YARN_TMPDIR"
+	export TMPDIR="$YARN_TMPDIR"
 fi
 ##############################################
 starttime=\$(date +%s.%N)
@@ -690,13 +701,13 @@ if [ ! -f "\$(which npm)" ]; then
 	/usr/local/src/centminmod/addons/nodejs.sh install
 fi
 if [ ! -f /usr/bin/yarn ]; then
-	npm install --global yarn
+	npm install --location=global yarn
 fi
 # https://docs.phpmyadmin.net/en/latest/setup.html#installing-from-git
 if [ ! -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
 	yarn install --production
 elif [ -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
-	yarn run --silent css-compile --quiet --style=compressed
+	yarn install --production
 fi
 chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
 chown -R ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
