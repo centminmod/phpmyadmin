@@ -7,17 +7,17 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.2.5'
+VER='0.2.6'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
 BASEDIR='/usr/local/nginx/html'
 DIRNAME=$(echo "${RANDOM}_mysqladmin${RANDOM}")
 
-SALT=$(openssl rand -base64 8)
+SALT=$(openssl rand -base64 9)
 USERPREFIX='admin'
 USER=$(echo "${USERPREFIX}${SALT}" | sed -e 's|\/||g' -e 's|\+||g')
-PASS=$(openssl rand -base64 20)
+PASS=$(openssl rand -base64 21)
 PASS=$(echo "$PASS" | sed -e 's|\/||g' -e 's|\+||g')
 BLOWFISH=$(openssl rand -base64 32 | cut -c1-32)
 # BLOWFISH=$(pwgen -syn1 46)
@@ -36,6 +36,7 @@ export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
 export LC_CTYPE=en_US.UTF-8
+export COMPOSER_ALLOW_SUPERUSER=1
 
 shopt -s expand_aliases
 for g in "" e f; do
@@ -674,6 +675,7 @@ DT=\$(date +"%d%m%y-%H%M%S")
 YARN_TMPDIR='/home/yarntmp-phpmyadmin'
 ##############################################
 CENTMINLOGDIR='/root/centminlogs'
+export COMPOSER_ALLOW_SUPERUSER=1
 
 if [ ! -d "$CENTMINLOGDIR" ]; then
   mkdir -p $CENTMINLOGDIR
@@ -686,6 +688,8 @@ fi
 ##############################################
 starttime=\$(date +%s.%N)
 {
+chown root:root ${BASEDIR}/${DIRNAME}
+chown -R root:root ${BASEDIR}/${DIRNAME}
 echo "cd ${BASEDIR}/${DIRNAME}"
 cd ${BASEDIR}/${DIRNAME}
 rm -rf composer.lock
