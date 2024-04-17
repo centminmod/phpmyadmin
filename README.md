@@ -17,6 +17,26 @@ Related log files for troubleshooting & diagnostics
 
 ### To Uninstall phpmyadmin.sh installed phpmyadmin & reinstall phpmyadmin latest 5.0.x stable version
 
+#### install tarball version
+
+```
+# uninstall existing phpmyadmin install
+/root/tools/phpmyadmin_uninstall.sh
+
+# download phpmyadmin-tar.sh
+cd /usr/local/src/centminmod/addons
+wget --no-check-certificate https://github.com/centminmod/phpmyadmin/raw/master/phpmyadmin-tar.sh -O phpmyadmin-tar.sh
+
+# permissions
+chmod 0700 /usr/local/src/centminmod/addons/phpmyadmin-tar.sh
+
+# install phpmyadmin lastest stable
+./phpmyadmin-tar.sh install
+```
+
+
+#### install Git version
+
 ```
 # uninstall existing phpmyadmin install
 /root/tools/phpmyadmin_uninstall.sh
