@@ -7,7 +7,7 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.2.6'
+VER='0.3.0'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
@@ -143,47 +143,6 @@ echo -e "$color$message" ; $Reset
 return
 }
 #################################################
-# VERCHECK=$(cat /etc/centminmod-release)
-# MINORVER=$(cat /etc/centminmod-release | awk -F "." '{print $3}')
-# COMPARE=`expr $MINORVER \< $VERSIONMINOR`
-
-# if [[ "$VERCHECK" != "$VERSIONALLOW" && "$COMPARE" = '1' ]]; then
-# 	cecho "------------------------------------------------------------------------------" $boldgreen
-# 	cecho "  $0 script requires centmin.sh from Centmin Mod" $boldyellow
-# 	cecho "  version: $VERSIONALLOW + recompile PHP (menu option #5)" $boldyellow
-# 	echo ""
-# 	cecho "  The following steps are required:" $boldyellow
-# 	echo ""
-# 	cecho "  1. Download and extract centmin-${VERSIONALLOW}.zip" $boldgreen
-# 	cecho "     As per instructions at http://centminmod.com/download.html" $boldgreen
-# 	cecho "  2. Run the updated centmin.sh script version"  $boldgreen
-# 	echo ""
-# 	cecho "      ./centmin.sh"  $boldwhite
-# 	echo ""
-# 	cecho "  3. Run menu option #5 to recompile PHP entering either the"  $boldgreen
-# 	cecho "     same PHP version or newer PHP  5.3.x or 5.4.x version"  $boldgreen
-# 	cecho "  4. Download latest version phpmyadmin.sh Addon script from"  $boldgreen
-# 	cecho "     http://centminmod.com/centminmodparts/addons/phpmyadmin.sh"  $boldgreen
-# 	cecho "     Give script appropriate permissions via command:"  $boldgreen
-# 	echo ""
-# 	cecho "     chmod 0700 /full/path/to/where/you/downloaded/phpmyadmin.sh"  $boldwhite
-# 	echo ""
-# 	cecho "  5. Add port 9418 to CSF Firewall /etc/csf/csf.conf append 9418 to existing"  $boldgreen
-# 	cecho "     TCP_IN / TCP_OUT list of ports. Then restart CSF Firewall via command:"  $boldgreen
-# 	echo ""
-# 	cecho "     csf -r"  $boldwhite
-# 	echo ""
-# 	cecho "  6. Run phpmyadmin.sh script via commands:"  $boldgreen
-# 	echo ""
-# 	cecho "     cd /full/path/to/where/you/downloaded/"  $boldwhite
-# 	cecho "     ./phpmyadmin.sh install"  $boldwhite
-# 	#echo ""
-# 	#cecho "  Aborting script..." $boldyellow
-# 	cecho "------------------------------------------------------------------------------" $boldgreen
-# 	exit
-# fi
-
-#################################################
 checkphpmyadmin() {
 	if [[ "$(grep -rw server_name /usr/local/nginx/conf/conf.d/ | grep -w "$SSLHNAME" | wc -l)" -gt '1' ]]; then
 		cecho "---------------------------------------------------------------" $boldyellow
@@ -265,32 +224,16 @@ if [[ ! -f /usr/bin/git ]]; then
 fi
 
 	cecho "---------------------------------------------------------------" $boldyellow
-	cecho "Installing phpmyadmin from official git repository..." $boldgreen
+	cecho "Installing phpmyadmin from official tarball downloads..." $boldgreen
 	cecho "---------------------------------------------------------------" $boldyellow
+	echo
 
-	cecho "This process can take some time depending on" $boldyellow
-	cecho "speed of the repository and your server..." $boldyellow
-	echo ""
-
-cd $BASEDIR
-git clone -b STABLE --depth=1 https://github.com/phpmyadmin/phpmyadmin.git $DIRNAME
+mkdir -p /svr-setup
+pushd /svr-setup
+wget https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-english.tar.gz -O /svr-setup/phpMyAdmin-latest-english.tar.gz
+tar xzf phpMyAdmin-latest-english.tar.gz
+mv phpMyAdmin-*-english ${BASEDIR}/${DIRNAME}
 cd $DIRNAME
-
-wget -cnv https://getcomposer.org/composer-stable.phar -O composer.phar
-echo y | php composer.phar update --no-dev
-
-if [ ! -f "$(which npm)" ]; then
-	/usr/local/src/centminmod/addons/nodejs.sh install
-fi
-if [ ! -f /usr/bin/yarn ]; then
-	npm install --location=global yarn
-fi
-# https://docs.phpmyadmin.net/en/latest/setup.html#installing-from-git
-if [ ! -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
-	yarn install --production
-elif [ -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
-	yarn install --production
-fi
 
 cp config.sample.inc.php config.inc.php
 chmod o-rw config.inc.php
@@ -601,7 +544,7 @@ server {
             server_name ${SSLHNAME};
             root   html;
 
-keepalive_timeout  3000;
+ keepalive_timeout  3000;
 
  client_body_buffer_size 256k;
  client_body_timeout 3000s;
@@ -623,7 +566,6 @@ keepalive_timeout  3000;
         # mozilla recommended
         ssl_ciphers ${CHACHACIPHERS}EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA256:EECDH+ECDSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+SHA384:EECDH+AES128:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS:!RC4:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA:!CAMELLIA;
         ssl_prefer_server_ciphers   on;
-        #add_header Alternate-Protocol  443:npn-spdy/3;
         #add_header Strict-Transport-Security "max-age=0; includeSubdomains;";
         add_header X-Frame-Options SAMEORIGIN;
         $COMP_HEADER;
@@ -635,11 +577,6 @@ keepalive_timeout  3000;
 
         access_log              /var/log/nginx/localhost_ssl.access.log     main;
         error_log               /var/log/nginx/localhost_ssl.error.log      error;
-
-# ngx_pagespeed & ngx_pagespeed handler
-#include /usr/local/nginx/conf/pagespeed.conf;
-#include /usr/local/nginx/conf/pagespeedhandler.conf;
-#include /usr/local/nginx/conf/pagespeedstatslog.conf;
 
     location / {
         return 302 http://\$server_name\$request_uri;
@@ -678,7 +615,6 @@ cat > "/root/tools/phpmyadmin_update.sh" <<EOF
 #!/bin/bash
 export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin"
 DT=\$(date +"%d%m%y-%H%M%S")
-YARN_TMPDIR='/home/yarntmp-phpmyadmin'
 ##############################################
 CENTMINLOGDIR='/root/centminlogs'
 export COMPOSER_ALLOW_SUPERUSER=1
@@ -686,39 +622,20 @@ export COMPOSER_ALLOW_SUPERUSER=1
 if [ ! -d "$CENTMINLOGDIR" ]; then
   mkdir -p $CENTMINLOGDIR
 fi
-if [ ! -d "$YARN_TMPDIR" ]; then
-	mkdir -p "$YARN_TMPDIR"
-	chmod 1777 "$YARN_TMPDIR"
-	export TMPDIR="$YARN_TMPDIR"
-fi
 ##############################################
 starttime=\$(date +%s.%N)
 {
-chown root:root ${BASEDIR}/${DIRNAME}
-chown -R root:root ${BASEDIR}/${DIRNAME}
-echo "cd ${BASEDIR}/${DIRNAME}"
-cd ${BASEDIR}/${DIRNAME}
-rm -rf composer.lock
-echo "git stash"
-git stash
-echo "git pull"
-git pull
-rm -rf composer.phar
-wget -cnv https://getcomposer.org/composer-stable.phar -O composer.phar
-echo y | php composer.phar update --no-dev
 
-if [ ! -f "\$(which npm)" ]; then
-	/usr/local/src/centminmod/addons/nodejs.sh install
-fi
-if [ ! -f /usr/bin/yarn ]; then
-	npm install --location=global yarn
-fi
-# https://docs.phpmyadmin.net/en/latest/setup.html#installing-from-git
-if [ ! -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
-	yarn install --production
-elif [ -f ${BASEDIR}/${DIRNAME}/themes/pmahomme/css/theme.css ]; then
-	yarn install --production
-fi
+#DIRNAME_BACKUP=${DIRNAME}_backup_${DT}
+#mv ${BASEDIR}/${DIRNAME} ${BASEDIR}/${DIRNAME_BACKUP}
+mkdir -p /svr-setup
+pushd /svr-setup
+
+wget https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-english.tar.gz -O /svr-setup/phpMyAdmin-latest-english.tar.gz
+tar xzf phpMyAdmin-latest-english.tar.gz
+mv phpMyAdmin-*-english ${BASEDIR}/${DIRNAME}
+popd
+
 chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
 chown -R ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
 
@@ -834,6 +751,12 @@ echo ""
 cecho "  https://${SSLHNAME}/${DIRNAME}" $boldwhite
 echo ""
 cecho "Login with your MySQL root username / password" $boldgreen
+echo
+cecho "---------------------------------------------------------------" $boldyellow
+cecho "Command line verify" $boldgreen
+echo
+cecho "  curl -Ik -u ${USER}:${PASS} https://${SSLHNAME}/${DIRNAME}" $boldwhite
+echo
 cecho "---------------------------------------------------------------" $boldyellow
 htpassdetails
 cecho "phpmyadmin update script at: /root/tools/phpmyadmin_update.sh" $boldgreen
