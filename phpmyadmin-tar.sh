@@ -233,7 +233,7 @@ pushd /svr-setup
 wget https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-english.tar.gz -O /svr-setup/phpMyAdmin-latest-english.tar.gz
 tar xzf phpMyAdmin-latest-english.tar.gz
 mv phpMyAdmin-*-english ${BASEDIR}/${DIRNAME}
-cd $DIRNAME
+cd ${BASEDIR}/${DIRNAME}
 
 cp config.sample.inc.php config.inc.php
 chmod o-rw config.inc.php
@@ -633,7 +633,8 @@ pushd /svr-setup
 
 wget https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-english.tar.gz -O /svr-setup/phpMyAdmin-latest-english.tar.gz
 tar xzf phpMyAdmin-latest-english.tar.gz
-mv phpMyAdmin-*-english ${BASEDIR}/${DIRNAME}
+\cp -af phpMyAdmin-*-english/* ${BASEDIR}/${DIRNAME}
+rm -rf ${BASEDIR}/${DIRNAME}/phpMyAdmin-*-english
 popd
 
 chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
