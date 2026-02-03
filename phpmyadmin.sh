@@ -237,9 +237,9 @@ usercreate() {
 createpassword() {
 cecho "---------------------------------------------------------------" $boldyellow
 cecho "Create phpmyadmin htaccess user/pass..." $boldyellow
-cecho "python /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS" $boldgreen
+cecho "python3 /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS" $boldgreen
 cecho "---------------------------------------------------------------" $boldyellow
-python /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS
+python3 /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS
 }
 
 #################################################
@@ -511,8 +511,8 @@ fi # CHECKPOOL
 
 fi # /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf
 
-service nginx restart
-service php-fpm restart
+systemctl restart nginx
+systemctl restart php-fpm
 
 fi
 
@@ -653,8 +653,8 @@ keepalive_timeout  3000;
 }
 SSLEOF
 
-service nginx restart
-service php-fpm restart
+systemctl restart nginx
+systemctl restart php-fpm
 
 chmod 0666 /var/log/nginx/localhost_ssl.access.log
 chmod 0666 /var/log/nginx/localhost_ssl.error.log
@@ -803,8 +803,8 @@ sed -i '/include \/usr\/local\/nginx\/conf\/phpmyadmin.conf;'/d /usr/local/nginx
 rm -rf /etc/centminmod/cronjobs/cronjoblist-before-phpmyadmin-setup.txt
 rm -rf /etc/centminmod/cronjobs/cronjoblist-after-phpmyadmin-setup.txt
 
-service nginx restart
-service php-fpm restart
+systemctl restart nginx
+systemctl restart php-fpm
 
 } 2>&1 | tee \${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log
 
