@@ -7,24 +7,38 @@
 # set STATICIP='y'. Otherwise leave as STATICIP='n'
 STATICIP='n'
 #################################################
-VER='0.3.0'
+VER='0.4'
 DT=$(date +"%d%m%y-%H%M%S")
 
 UPDATEDIR='/root/tools'
 BASEDIR='/usr/local/nginx/html'
-DIRNAME=$(echo "${RANDOM}_mysqladmin${RANDOM}")
+DIRNAME="${RANDOM}_mysqladmin${RANDOM}"
 
-SALT=$(openssl rand -base64 9)
-USERPREFIX='admin'
+SALT=$(openssl rand -base64 13)
+USERPREFIX='myadmin'
 USER=$(echo "${USERPREFIX}${SALT}" | sed -e 's|\/||g' -e 's|\+||g')
-PASS=$(openssl rand -base64 21)
+PASS=$(openssl rand -base64 22)
 PASS=$(echo "$PASS" | sed -e 's|\/||g' -e 's|\+||g')
 BLOWFISH=$(openssl rand -base64 32 | cut -c1-32)
 # BLOWFISH=$(pwgen -syn1 46)
-CURRENTIP=$(echo $SSH_CLIENT | awk '{print $1}')
 USERNAME='nginx'
 
 SSLHNAME=$(uname -n)
+OS_PRETTY_NAME=$(awk -F '=' '/PRETTY_NAME/ {print $2}' /etc/os-release | sed -e 's| (| |g' -e 's|)| |g' -e 's| Core ||g' -e 's|"||g')
+CURL_AGENT_VERSION=$(curl -V 2>&1 | head -n 1 |  awk '{print $1"/"$2}')
+CURL_AGENT="${CURL_AGENT_VERSION} ${OS_PRETTY_NAME}"
+CURL_CPUMODEL=$(awk -F: '/model name/{print $2}' /proc/cpuinfo | sort | uniq -c | xargs | sed -e 's|(R)||g' -e 's|(TM)||g' -e 's|Intel Core|Intel|g' -e 's|CPU ||g' -e 's|-Core|C|g' -e 's|@ |@|g');
+CURL_CPUSPEED=$(awk -F: '/cpu MHz/{print $2}' /proc/cpuinfo | sort | uniq| sed -e s'|      ||g' | xargs | awk '{sum = 0; for (i = 1; i <= NF; i++) sum += $i; sum /= NF; printf("%.0f\n",sum)}')
+# Try IPv4 first, fallback to IPv6 for IPv6-only servers
+CNIP=$(curl -4 -s --connect-timeout 5 -A "$CURL_AGENT phpmyadmin.sh ${VER} IP CHECK $CURL_CPUMODEL $CURL_CPUSPEED $VPS_VIRTWHAT" https://geoip.centminmod.com/v4 | jq -r '.ip')
+if [[ -z "$CNIP" || "$CNIP" == "null" ]]; then
+    CNIP=$(curl -6 -s --connect-timeout 5 -A "$CURL_AGENT phpmyadmin.sh ${VER} IP CHECK $CURL_CPUMODEL $CURL_CPUSPEED $VPS_VIRTWHAT" https://geoip.centminmod.com/v4 | jq -r '.ip')
+fi
+# Get current IP from SSH_CLIENT, fallback to CNIP if empty
+CURRENTIP=$(echo "$SSH_CLIENT" | awk '{print $1}')
+if [[ -z "$CURRENTIP" ]]; then
+    CURRENTIP="$CNIP"
+fi
 
 VERSIONMINOR='04' # last 2 digits in Centmin Mod version i.e. 1.2.3-eva2000.04
 VERSIONALLOW="1.2.3-eva2000.${VERSIONMINOR}"
@@ -40,42 +54,42 @@ export COMPOSER_ALLOW_SUPERUSER=1
 
 shopt -s expand_aliases
 for g in "" e f; do
-    alias ${g}grep="LC_ALL=C ${g}grep"  # speed-up grep, egrep, fgrep
+    alias "${g}grep=LC_ALL=C ${g}grep"  # speed-up grep, egrep, fgrep
 done
 
 # Memory calculations for dynamic memory limit determination
-TOTALMEM=$(cat /proc/meminfo | grep MemTotal | awk '{print $2}')
-TOTALMEMMB=`echo "scale=0;$TOTALMEM/1024" | bc`
+TOTALMEM=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+TOTALMEMMB=$(echo "scale=0;$TOTALMEM/1024" | bc)
 
-CHECKFREEMEM=$(cat /proc/meminfo | grep MemFree)
+CHECKFREEMEM=$(grep MemFree /proc/meminfo)
 if [[ "$CHECKFREEMEM" ]]; then
-FREEMEM=$(cat /proc/meminfo | grep MemFree | awk '{print $2}')
-FREEMEMMB=`echo "scale=0;$FREEMEM/1024" | bc`
+FREEMEM=$(grep MemFree /proc/meminfo | awk '{print $2}')
+FREEMEMMB=$(echo "scale=0;$FREEMEM/1024" | bc)
 else
 FREEMEMMB='0'
 fi
 
-CHECKBUFFER=$(cat /proc/meminfo | grep Buffers)
+CHECKBUFFER=$(grep Buffers /proc/meminfo)
 if [[ "$CHECKBUFFER" ]]; then
-BUFFERSMEM=$(cat /proc/meminfo | grep Buffers | awk '{print $2}')
-BUFFERSMB=`echo "scale=0;$BUFFERSMEM/1024" | bc`
+BUFFERSMEM=$(grep Buffers /proc/meminfo | awk '{print $2}')
+BUFFERSMB=$(echo "scale=0;$BUFFERSMEM/1024" | bc)
 else
 BUFFERSMB='0'
 fi
 
-CHECKCACHED=$(cat /proc/meminfo | grep ^Cached)
+CHECKCACHED=$(grep ^Cached /proc/meminfo)
 if [[ "$CHECKCACHED" ]]; then
-CACHEDMEM=$(cat /proc/meminfo | grep ^Cached | awk '{print $2}')
-CACHEDMB=`echo "scale=0;$CACHEDMEM/1024" | bc`
+CACHEDMEM=$(grep ^Cached /proc/meminfo | awk '{print $2}')
+CACHEDMB=$(echo "scale=0;$CACHEDMEM/1024" | bc)
 else
 CACHEDMB='0'
 fi
 
-REALFREEMB=$(echo $FREEMEMMB+$BUFFERSMB+$CACHEDMB | bc)
-REALUSEDMEM=$(echo $TOTALMEMMB-$REALFREEMB | bc)
+REALFREEMB=$(echo "$FREEMEMMB"+"$BUFFERSMB"+"$CACHEDMB" | bc)
+REALUSEDMEM=$(echo "$TOTALMEMMB"-"$REALFREEMB" | bc)
 
 # set php-fpm memory_limit to 4/9 th of available free memory
-MEMLIMIT=$(echo $REALFREEMB / 2.25 | bc)
+MEMLIMIT=$(echo "$REALFREEMB" / 2.25 | bc)
 
 # echo "Total Mem: $TOTALMEMMB MB"
 # echo "Real Free Mem: $REALFREEMB MB"
@@ -84,27 +98,17 @@ MEMLIMIT=$(echo $REALFREEMB / 2.25 | bc)
 CENTMINLOGDIR='/root/centminlogs'
 FPMPOOLDIR='/usr/local/nginx/conf/phpfpmd'
 
-if [ ! -d "$YARN_TMPDIR" ]; then
-	mkdir -p "$YARN_TMPDIR"
-	chmod 1777 "$YARN_TMPDIR"
-	export TMPDIR="$YARN_TMPDIR"
-fi
-if [[ "$(nginx -V 2>&1 | grep -Eo 'with-http_v2_module')" = 'with-http_v2_module' ]]; then
-  HTTPTWO=y
-  LISTENOPT='ssl http2'
-  COMP_HEADER='#spdy_headers_comp 5'
-else
-  HTTPTWO=n
-  LISTENOPT='ssl spdy'
-  COMP_HEADER='spdy_headers_comp 5'
-fi
+HTTPTWO=y
+LISTENOPT='ssl'
+HTTP2_DIRECTIVE='http2 on;'
+COMP_HEADER='#spdy_headers_comp 5'
 
 if [ ! -d "$CENTMINLOGDIR" ]; then
-mkdir -p $CENTMINLOGDIR
+mkdir -p "$CENTMINLOGDIR"
 fi
 
 if [ ! -d "$FPMPOOLDIR" ]; then
-mkdir -p $FPMPOOLDIR
+mkdir -p "$FPMPOOLDIR"
 fi
 
 if [ ! -f /usr/bin/pwgen ]; then
@@ -143,158 +147,199 @@ echo -e "$color$message" ; $Reset
 return
 }
 #################################################
+# VERCHECK=$(cat /etc/centminmod-release)
+# MINORVER=$(cat /etc/centminmod-release | awk -F "." '{print $3}')
+# COMPARE=$(expr $MINORVER \< $VERSIONMINOR)
+
+# if [[ "$VERCHECK" != "$VERSIONALLOW" && "$COMPARE" = '1' ]]; then
+# 	cecho "------------------------------------------------------------------------------" "$boldgreen"
+# 	cecho "  $0 script requires centmin.sh from Centmin Mod" "$boldyellow"
+# 	cecho "  version: $VERSIONALLOW + recompile PHP (menu option #5)" "$boldyellow"
+# 	echo ""
+# 	cecho "  The following steps are required:" "$boldyellow"
+# 	echo ""
+# 	cecho "  1. Download and extract centmin-${VERSIONALLOW}.zip" "$boldgreen"
+# 	cecho "     As per instructions at http://centminmod.com/download.html" "$boldgreen"
+# 	cecho "  2. Run the updated centmin.sh script version"  "$boldgreen"
+# 	echo ""
+# 	cecho "      ./centmin.sh"  "$boldwhite"
+# 	echo ""
+# 	cecho "  3. Run menu option #5 to recompile PHP entering either the"  "$boldgreen"
+# 	cecho "     same PHP version or newer PHP  5.3.x or 5.4.x version"  "$boldgreen"
+# 	cecho "  4. Download latest version phpmyadmin.sh Addon script from"  "$boldgreen"
+# 	cecho "     http://centminmod.com/centminmodparts/addons/phpmyadmin.sh"  "$boldgreen"
+# 	cecho "     Give script appropriate permissions via command:"  "$boldgreen"
+# 	echo ""
+# 	cecho "     chmod 0700 /full/path/to/where/you/downloaded/phpmyadmin.sh"  "$boldwhite"
+# 	echo ""
+# 	cecho "  5. Add port 9418 to CSF Firewall /etc/csf/csf.conf append 9418 to existing"  "$boldgreen"
+# 	cecho "     TCP_IN / TCP_OUT list of ports. Then restart CSF Firewall via command:"  "$boldgreen"
+# 	echo ""
+# 	cecho "     csf -r"  "$boldwhite"
+# 	echo ""
+# 	cecho "  6. Run phpmyadmin.sh script via commands:"  "$boldgreen"
+# 	echo ""
+# 	cecho "     cd /full/path/to/where/you/downloaded/"  "$boldwhite"
+# 	cecho "     ./phpmyadmin.sh install"  "$boldwhite"
+# 	#echo ""
+# 	#cecho "  Aborting script..." "$boldyellow"
+# 	cecho "------------------------------------------------------------------------------" "$boldgreen"
+# 	exit
+# fi
+
+#################################################
 checkphpmyadmin() {
-	if [[ "$(grep -rw server_name /usr/local/nginx/conf/conf.d/ | grep -w "$SSLHNAME" | wc -l)" -gt '1' ]]; then
-		cecho "---------------------------------------------------------------" $boldyellow
-		cecho "Warning: detected possible duplicate server_name entry" $boldgreen
-		cecho "main hostname vhost server_name value has to be unique" $boldgreen
-		cecho "and separate from any other nginx vhost site you addded" $boldgreen
-		cecho "Check your server_name in /usr/local/nginx/conf/conf.d/virtual.conf" $boldgreen
-		cecho "read Step 1 of Getting Started Guide for main hostname" $boldgreen
-		cecho "proper setup https://centminmod.com/getstarted.html" $boldgreen
-		cecho "---------------------------------------------------------------" $boldyellow
+	if [[ "$(grep -rw server_name /usr/local/nginx/conf/conf.d/ | grep -cw "$SSLHNAME")" -gt '1' ]]; then
+		cecho "---------------------------------------------------------------" "$boldyellow"
+		cecho "Warning: detected possible duplicate server_name entry" "$boldgreen"
+		cecho "main hostname vhost server_name value has to be unique" "$boldgreen"
+		cecho "and separate from any other nginx vhost site you addded" "$boldgreen"
+		cecho "Check your server_name in /usr/local/nginx/conf/conf.d/virtual.conf" "$boldgreen"
+		cecho "read Step 1 of Getting Started Guide for main hostname" "$boldgreen"
+		cecho "proper setup https://centminmod.com/getstarted.html" "$boldgreen"
+		cecho "---------------------------------------------------------------" "$boldyellow"
 		exit
 	fi
 if [[ -f /usr/local/nginx/conf/phpmyadmin_check ]]; then
-	cecho "---------------------------------------------------------------" $boldyellow
-	cecho "detected phpmyadmin install that already exists" $boldgreen
-	cecho "aborting..." $boldgreen
-	cecho "---------------------------------------------------------------" $boldyellow
+	cecho "---------------------------------------------------------------" "$boldyellow"
+	cecho "detected phpmyadmin install that already exists" "$boldgreen"
+	cecho "aborting..." "$boldgreen"
+	cecho "---------------------------------------------------------------" "$boldyellow"
 	exit
 fi
 }
 #################################################
 memlimitmsg() {
 echo ""
-cecho "Dynamically set PHP memory_limit based on available system memory..." $boldyellow
+cecho "Dynamically set PHP memory_limit based on available system memory..." "$boldyellow"
 echo ""
-cecho "Total Mem: $TOTALMEMMB MB" $boldyellow
-cecho "Real Free Mem: $REALFREEMB MB" $boldyellow
-cecho "Mem Limit: $MEMLIMIT MB" $boldyellow
+cecho "Total Mem: $TOTALMEMMB MB" "$boldyellow"
+cecho "Real Free Mem: $REALFREEMB MB" "$boldyellow"
+cecho "Mem Limit: $MEMLIMIT MB" "$boldyellow"
 echo ""
 }
 #################################################
 usercreate() {
 
   if [[ "$USERNAME" != 'nginx' ]]; then
-	 /usr/sbin/useradd -s /sbin/nologin -d /home/${USERNAME}/ -G nginx ${USERNAME}
-	 USERID=$(id ${USERNAME})
-	 cecho "---------------------------------------------------------------" $boldgreen
-	 cecho "Create User: $USERNAME" $boldyellow
-	 cecho "$USERID" $boldyellow
-	 cecho "---------------------------------------------------------------" $boldgreen
+	 /usr/sbin/useradd -s /sbin/nologin -d "/home/${USERNAME}/" -G nginx "${USERNAME}"
+	 USERID=$(id "${USERNAME}")
+	 cecho "---------------------------------------------------------------" "$boldgreen"
+	 cecho "Create User: $USERNAME" "$boldyellow"
+	 cecho "$USERID" "$boldyellow"
+	 cecho "---------------------------------------------------------------" "$boldgreen"
 	 echo ""
 	elif [[ "$USERNAME" = 'nginx' ]]; then
-		cecho "---------------------------------------------------------------" $boldgreen
-		cecho "User $USERNAME already exists" $boldyellow
-		cecho "---------------------------------------------------------------" $boldgreen
+		cecho "---------------------------------------------------------------" "$boldgreen"
+		cecho "User $USERNAME already exists" "$boldyellow"
+		cecho "---------------------------------------------------------------" "$boldgreen"
   fi
 
 }
 
 #################################################
 createpassword() {
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "Create phpmyadmin htaccess user/pass..." $boldyellow
-cecho "python3 /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
-python3 /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "Create phpmyadmin htaccess user/pass..." "$boldyellow"
+cecho "python3 /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin $USER $PASS" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
+python3 /usr/local/nginx/conf/htpasswd.py -c -b /usr/local/nginx/conf/htpassphpmyadmin "$USER" "$PASS"
 }
 
 #################################################
 htpassdetails() {
 echo ""
-cecho "phpmyadmin htaccess login details:" $boldgreen
-cecho "Username: $USER" $boldgreen
-cecho "Password: $PASS" $boldgreen
-cecho "Allowed IP address: ${CURRENTIP}" $boldgreen
+cecho "phpmyadmin htaccess login details:" "$boldgreen"
+cecho "Username: $USER" "$boldgreen"
+cecho "Password: $PASS" "$boldgreen"
+cecho "Allowed IP address: ${CURRENTIP}" "$boldgreen"
 echo ""
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
 }
 #################################################
 myadmininstall() {
 
 if [[ ! -f /usr/bin/git ]]; then
-	cecho "---------------------------------------------------------------" $boldyellow
-	cecho "Installing git..." $boldgreen
-	cecho "---------------------------------------------------------------" $boldyellow
-	cecho "yum -q -y install git --disablerepo=CentALT" $boldgreen
+	cecho "---------------------------------------------------------------" "$boldyellow"
+	cecho "Installing git..." "$boldgreen"
+	cecho "---------------------------------------------------------------" "$boldyellow"
+	cecho "yum -q -y install git --disablerepo=CentALT" "$boldgreen"
 	yum -q -y install git --disablerepo=CentALT
 	echo ""
 fi
 
-	cecho "---------------------------------------------------------------" $boldyellow
-	cecho "Installing phpmyadmin from official tarball downloads..." $boldgreen
-	cecho "---------------------------------------------------------------" $boldyellow
-	echo
+	cecho "---------------------------------------------------------------" "$boldyellow"
+	cecho "Installing phpmyadmin from official downloads..." "$boldgreen"
+	cecho "---------------------------------------------------------------" "$boldyellow"
 
-mkdir -p /svr-setup
-pushd /svr-setup
-wget https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-english.tar.gz -O /svr-setup/phpMyAdmin-latest-english.tar.gz
-tar xzf phpMyAdmin-latest-english.tar.gz
-mv phpMyAdmin-*-english ${BASEDIR}/${DIRNAME}
-cd ${BASEDIR}/${DIRNAME}
+	cecho "This process can take some time depending on" "$boldyellow"
+	cecho "speed of the download and your server..." "$boldyellow"
+	echo ""
 
+cd "$BASEDIR" || exit 1
+
+wget -O phpMyAdmin-latest.zip https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip
+unzip phpMyAdmin-latest.zip
+mkdir -p "$DIRNAME"
+rsync -a phpMyAdmin-*-all-languages/ "${DIRNAME}/" --exclude=config.inc.php
+rm -rf phpMyAdmin-*-all-languages
+rm -f phpMyAdmin-latest.zip
+
+cd "$DIRNAME" || exit 1
 cp config.sample.inc.php config.inc.php
 chmod o-rw config.inc.php
 
-replace 'a8b7c6d' "${BLOWFISH}" -- config.inc.php
 sed -i "s|\['blowfish_secret'\] = ''|\['blowfish_secret'\] = '${BLOWFISH}'|g" config.inc.php
 
-sed -i 's/?>//g' config.inc.php
-echo "\$cfg['ExecTimeLimit'] = '28800';" >> config.inc.php
-echo "\$cfg['MemoryLimit'] = '0';" >> config.inc.php
-echo "\$cfg['ShowDbStructureCreation'] = 'true';" >> config.inc.php
-echo "\$cfg['ShowDbStructureLastUpdate'] = 'true';" >> config.inc.php
-echo "\$cfg['ShowDbStructureLastCheck'] = 'true';" >> config.inc.php
-echo "\$cfg['ShowPhpInfo'] = true;" >> config.inc.php
-echo "\$cfg['Export']['compression'] = 'gzip';" >> config.inc.php
-echo "\$cfg['LoginCookieValidity'] = 1440;" >> config.inc.php
-echo "?>" >> config.inc.php
+{
+echo "\$cfg['ExecTimeLimit'] = '28800';"
+echo "\$cfg['MemoryLimit'] = '0';"
+echo "\$cfg['ShowDbStructureCreation'] = 'true';"
+echo "\$cfg['ShowDbStructureLastUpdate'] = 'true';"
+echo "\$cfg['ShowDbStructureLastCheck'] = 'true';"
+echo "\$cfg['ShowPhpInfo'] = true;"
+echo "\$cfg['Export']['compression'] = 'gzip';"
+echo "\$cfg['LoginCookieValidity'] = 1440;"
+echo "\$cfg['VersionCheck'] = false;"
+} >> config.inc.php
 
-chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
-chown -R ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
-chmod g+rx ${BASEDIR}/${DIRNAME}
+chown "${USERNAME}:nginx" "${BASEDIR}/${DIRNAME}"
+chown -R "${USERNAME}:nginx" "${BASEDIR}/${DIRNAME}"
+chmod g+rx "${BASEDIR}/${DIRNAME}"
 
 if [[ ! -f "/usr/local/nginx/conf/phpmyadmin.conf" ]]; then
 
-	cecho "---------------------------------------------------------------" $boldyellow
-	cecho "Setup /usr/local/nginx/conf/phpmyadmin.conf ..." $boldgreen
-	cecho "---------------------------------------------------------------" $boldyellow
+	cecho "---------------------------------------------------------------" "$boldyellow"
+	cecho "Setup /usr/local/nginx/conf/phpmyadmin.conf ..." "$boldgreen"
+	cecho "---------------------------------------------------------------" "$boldyellow"
 
-createpassword 
+createpassword
 
 #history -d $((HISTCMD-2))
 
 echo ""
+echo "\cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME}.conf"
+\cp -af /usr/local/nginx/conf/php.conf "/usr/local/nginx/conf/php_${DIRNAME}.conf"
 
-if [ -f /usr/local/nginx/conf/php_phpmyadmin_template.conf ]; then
-	echo "\cp -af /usr/local/nginx/conf/php_phpmyadmin_template.conf /usr/local/nginx/conf/php_${DIRNAME}.conf"
-	\cp -af /usr/local/nginx/conf/php_phpmyadmin_template.conf /usr/local/nginx/conf/php_${DIRNAME}.conf
-else
-	echo "\cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME}.conf"
-	\cp -af /usr/local/nginx/conf/php.conf /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/fastcgi_pass   127.0.0.1:9000/fastcgi_pass   127.0.0.1:9991/g' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
+sed -i 's/#fastcgi_pass   127.0.0.1:9991/fastcgi_pass   127.0.0.1:9991/g' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
+sed -i 's|fastcgi_pass phpbackend|#fastcgi_pass phpbackend|g' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
+sed -i 's|fastcgi_pass dft_php|#fastcgi_pass dft_php|g' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
+sed -i 's|fastcgi_keep_conn on|#fastcgi_keep_conn on|' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
+
+if ! grep -q 'fastcgi_param HTTPS $server_https;' /usr/local/nginx/conf/php.conf; then
+replace '#fastcgi_param HTTPS on;' 'fastcgi_param HTTPS on;' -- "/usr/local/nginx/conf/php_${DIRNAME}.conf"
 fi
 
-sed -i 's/fastcgi_pass   127.0.0.1:9000/fastcgi_pass   127.0.0.1:9991/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
-sed -i 's/#fastcgi_pass   127.0.0.1:9991/fastcgi_pass   127.0.0.1:9991/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
-sed -i 's|fastcgi_pass phpbackend|#fastcgi_pass phpbackend|g' /usr/local/nginx/conf/php_${DIRNAME}.conf
-sed -i 's|fastcgi_pass dft_php|#fastcgi_pass dft_php|g' /usr/local/nginx/conf/php_${DIRNAME}.conf
-sed -i 's|fastcgi_keep_conn on|#fastcgi_keep_conn on|' /usr/local/nginx/conf/php_${DIRNAME}.conf
-
-if [[ -z "$(grep 'fastcgi_param HTTPS $server_https;' /usr/local/nginx/conf/php.conf)" ]]; then
-replace '#fastcgi_param HTTPS on;' 'fastcgi_param HTTPS on;' -- /usr/local/nginx/conf/php_${DIRNAME}.conf
-fi
-
-# sed -i 's/#fastcgi_pass   unix:\/tmp\/php5-fpm.sock/fastcgi_pass   unix:\/tmp\/phpfpm_myadmin.sock/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+# sed -i 's/#fastcgi_pass   unix:\/tmp\/php5-fpm.sock/fastcgi_pass   unix:\/tmp\/phpfpm_myadmin.sock/g' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
 
 # increase php-fpm timeouts
 
-sed -i 's/fastcgi_connect_timeout 60;/fastcgi_connect_timeout 3000;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/fastcgi_connect_timeout 60;/fastcgi_connect_timeout 3000;/g' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
 
-sed -i 's/fastcgi_send_timeout 180;/fastcgi_send_timeout 3000;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/fastcgi_send_timeout 180;/fastcgi_send_timeout 3000;/g' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
 
-sed -i 's/fastcgi_read_timeout 180;/fastcgi_read_timeout 3000;/g' /usr/local/nginx/conf/php_${DIRNAME}.conf
+sed -i 's/fastcgi_read_timeout 180;/fastcgi_read_timeout 3000;/g' "/usr/local/nginx/conf/php_${DIRNAME}.conf"
 
 cat > "/usr/local/nginx/conf/phpmyadmin.conf" <<EOF
 location ^~ /${DIRNAME}/ {
@@ -304,67 +349,85 @@ EOF
 
 sed -i "s/include \/usr\/local\/nginx\/conf\/staticfiles.conf;/include \/usr\/local\/nginx\/conf\/phpmyadmin.conf;\ninclude \/usr\/local\/nginx\/conf\/staticfiles.conf;/g" /usr/local/nginx/conf/conf.d/virtual.conf
 
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
 
 cat /usr/local/nginx/conf/conf.d/virtual.conf
 
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
 
-if [[ "$STATICIP" = 'y' && ! -z "$CURRENTIP" ]]; then
+if [[ "$STATICIP" = 'y' && -n "$CURRENTIP" ]]; then
 
-cecho "STATIC IP configuration" $boldyellow
+cecho "STATIC IP configuration" "$boldyellow"
 
 cat > "/usr/local/nginx/conf/phpmyadmin_https.conf" <<END
-location ^~ /${DIRNAME}/ {
-	#try_files \$uri \$uri/ /${DIRNAME}/index.php?\$args;
-	include /usr/local/nginx/conf/php_${DIRNAME}.conf;
-
+# Exact match for directory - redirect to index.php
+location = /${DIRNAME}/ {
 	auth_basic      "Private Access";
 	auth_basic_user_file  /usr/local/nginx/conf/htpassphpmyadmin;
 	allow 127.0.0.1;
 	allow ${CURRENTIP};
 	deny all;
+	return 302 /${DIRNAME}/index.php;
+}
+
+# Handle all phpmyadmin files
+location ^~ /${DIRNAME}/ {
+	auth_basic      "Private Access";
+	auth_basic_user_file  /usr/local/nginx/conf/htpassphpmyadmin;
+	allow 127.0.0.1;
+	allow ${CURRENTIP};
+	deny all;
+	include /usr/local/nginx/conf/php_${DIRNAME}.conf;
 }
 END
 
 else
 
-cecho "NON-STATIC IP configuration" $boldyellow
+cecho "NON-STATIC IP configuration" "$boldyellow"
 
 cat > "/usr/local/nginx/conf/phpmyadmin_https.conf" <<END
-location ^~ /${DIRNAME}/ {
-	#try_files \$uri \$uri/ /${DIRNAME}/index.php?\$args;
-	include /usr/local/nginx/conf/php_${DIRNAME}.conf;
-
+# Exact match for directory - redirect to index.php
+location = /${DIRNAME}/ {
 	auth_basic      "Private Access";
 	auth_basic_user_file  /usr/local/nginx/conf/htpassphpmyadmin;
 	allow 127.0.0.1;
 	#allow ${CURRENTIP};
 	#deny all;
+	return 302 /${DIRNAME}/index.php;
+}
+
+# Handle all phpmyadmin files
+location ^~ /${DIRNAME}/ {
+	auth_basic      "Private Access";
+	auth_basic_user_file  /usr/local/nginx/conf/htpassphpmyadmin;
+	allow 127.0.0.1;
+	#allow ${CURRENTIP};
+	#deny all;
+	include /usr/local/nginx/conf/php_${DIRNAME}.conf;
 }
 END
 
-fi # STATICIP 
+fi # STATICIP
 
-	cecho "---------------------------------------------------------------" $boldyellow
-	cecho "cat /usr/local/nginx/conf/phpmyadmin.conf" $boldgreen
-	cecho "---------------------------------------------------------------" $boldyellow
+	cecho "---------------------------------------------------------------" "$boldyellow"
+	cecho "cat /usr/local/nginx/conf/phpmyadmin.conf" "$boldgreen"
+	cecho "---------------------------------------------------------------" "$boldyellow"
 
 cat /usr/local/nginx/conf/phpmyadmin.conf
 
-	cecho "---------------------------------------------------------------" $boldyellow
-	cecho "cat /usr/local/nginx/conf/phpmyadmin_https.conf" $boldgreen
-	cecho "---------------------------------------------------------------" $boldyellow
+	cecho "---------------------------------------------------------------" "$boldyellow"
+	cecho "cat /usr/local/nginx/conf/phpmyadmin_https.conf" "$boldgreen"
+	cecho "---------------------------------------------------------------" "$boldyellow"
 
 cat /usr/local/nginx/conf/phpmyadmin_https.conf
 
-	cecho "---------------------------------------------------------------" $boldyellow
+	cecho "---------------------------------------------------------------" "$boldyellow"
 
 # php-fpm pool setup
 
 if [[ ! -f /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf ]]; then
 	echo ""
-	cecho "touch /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" $boldgreen
+	cecho "touch /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" "$boldgreen"
 	touch /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf
 	touch /usr/local/nginx/conf/phpfpmd/empty.conf
 	echo ""
@@ -373,11 +436,11 @@ CHECKPOOLDIR=$(grep ';include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf' /usr/
 
 CHECKPOOLDIRB=$(grep 'include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf' /usr/local/etc/php-fpm.conf)
 
-if [[ ! -z "$CHECKPOOLDIR" ]]; then
+if [[ -n "$CHECKPOOLDIR" ]]; then
 sed -i 's/;include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/g' /usr/local/etc/php-fpm.conf
 fi
 
-#if [[ ! -z "$CHECKPOOLDIR" && -z "$CHECKPOOLDIRB" ]]; then
+#if [[ -n "$CHECKPOOLDIR" && -z "$CHECKPOOLDIRB" ]]; then
 #sed -i 's/;include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/include=\/usr\/local\/nginx\/conf\/phpfpmd\/\*.conf/g' /usr/local/etc/php-fpm.conf
 #fi
 
@@ -408,9 +471,9 @@ pm.max_children = 5
 pm.start_servers = 1
 pm.min_spare_servers = 1
 pm.max_spare_servers = 3
-pm.max_requests = 500
+pm.max_requests = 5000
 
-pm.process_idle_timeout = 3600s;
+pm.process_idle_timeout = 7200s;
 
 rlimit_files = 65536
 rlimit_core = 0
@@ -431,21 +494,21 @@ php_flag[display_errors] = off
 php_admin_value[error_log] = /var/log/php_myadmin_error.log
 php_admin_flag[log_errors] = on
 php_admin_value[memory_limit] = ${MEMLIMIT}M
-php_admin_value[max_execution_time] = 3600
+php_admin_value[max_execution_time] = 7200
 php_admin_value[post_max_size] = 1280M
 php_admin_value[upload_max_filesize] = 1280M
 EOF
 
 if [[ ! -f /var/log/php_myadmin_error.log ]]; then
 	touch /var/log/php_myadmin_error.log
-	chown ${USERNAME}:nginx /var/log/php_myadmin_error.log
+	chown "${USERNAME}:nginx" /var/log/php_myadmin_error.log
 	chmod 0666 /var/log/php_myadmin_error.log
 	ls -lah /var/log/php_myadmin_error.log
 fi
 
 if [[ ! -f /var/log/php-fpm/www-slowmyadmin.log ]]; then
 	touch /var/log/php-fpm/www-slowmyadmin.log
-	chown ${USERNAME}:nginx /var/log/php-fpm/www-slowmyadmin.log
+	chown "${USERNAME}:nginx" /var/log/php-fpm/www-slowmyadmin.log
 	chmod 0666 /var/log/php-fpm/www-slowmyadmin.log
 	ls -lah /var/log/php-fpm/www-slowmyadmin.log
 fi
@@ -463,19 +526,19 @@ fi
 
 sslvhost() {
 
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "SSL Vhost Setup..." $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "SSL Vhost Setup..." "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
 echo ""
 
 mkdir -p /usr/local/nginx/conf/ssl
-cd /usr/local/nginx/conf/ssl
+cd /usr/local/nginx/conf/ssl || exit 1
 
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "Generating self signed SSL certificate..." $boldgreen
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "Generating self signed SSL certificate..." "$boldgreen"
 sleep 10
-cecho "Just hit enter at each of the prompts" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "Just hit enter at each of the prompts" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
 echo ""
 sleep 10
 
@@ -499,6 +562,7 @@ subjectAltName = @alt_names
 [alt_names]
 DNS.1 = ${SSLHNAME}
 DNS.2 = *.${SSLHNAME}
+DNS.3 = ${CNIP}
 EOF
 
 cat > /tmp/v3ext.cnf <<EOF
@@ -510,15 +574,17 @@ subjectAltName = @alt_names
 [alt_names]
 DNS.1 = ${SSLHNAME}
 DNS.2 = *.${SSLHNAME}
+DNS.3 = ${CNIP}
 EOF
 
 # Create the certificate signing request
 echo "openssl req -new -newkey rsa:2048 -sha256 -nodes -out ${SSLHNAME}.csr -keyout ${SSLHNAME}.key -config /tmp/req.cnf"
-openssl req -new -newkey rsa:2048 -sha256 -nodes -out ${SSLHNAME}.csr -keyout ${SSLHNAME}.key -config /tmp/req.cnf
+openssl req -new -newkey rsa:2048 -sha256 -nodes -out "${SSLHNAME}.csr" -keyout "${SSLHNAME}.key" -config /tmp/req.cnf
 echo "openssl req -noout -text -in ${SSLHNAME}.csr | grep DNS"
-openssl req -noout -text -in ${SSLHNAME}.csr | grep DNS
+openssl req -noout -text -in "${SSLHNAME}.csr" | grep DNS
 echo "openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt -extfile /tmp/v3ext.cnf"
-openssl x509 -req -days 36500 -sha256 -in ${SSLHNAME}.csr -signkey ${SSLHNAME}.key -out ${SSLHNAME}.crt -extfile /tmp/v3ext.cnf
+openssl x509 -req -days 36500 -sha256 -in "${SSLHNAME}.csr" -signkey "${SSLHNAME}.key" -out "${SSLHNAME}.crt" -extfile /tmp/v3ext.cnf
+openssl x509 -noout -text < "${SSLHNAME}.crt"
 
 rm -f /tmp/req.cnf
 rm -f /tmp/v3ext.cnf
@@ -538,16 +604,17 @@ else
 fi
 
 cat > "/usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf"<<SSLEOF
-# https SSL SPDY phpmyadmin
+# https SSL HTTP/2 phpmyadmin
 server {
         listen 443 $LISTENOPT;
-            server_name ${SSLHNAME};
-            root   html;
+        $HTTP2_DIRECTIVE
+        server_name ${SSLHNAME} ${CNIP};
+        root   html;
 
- keepalive_timeout  3000;
+keepalive_timeout  14400;
 
  client_body_buffer_size 256k;
- client_body_timeout 3000s;
+ client_body_timeout 7200s;
  client_header_buffer_size 256k;
 ## how long a connection has to complete sending
 ## it's headers for request to be processed
@@ -560,9 +627,8 @@ server {
 
         ssl_certificate      /usr/local/nginx/conf/ssl/${SSLHNAME}.crt;
         ssl_certificate_key  /usr/local/nginx/conf/ssl/${SSLHNAME}.key;
-        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
-        ssl_session_cache      shared:SSL:10m;
-        ssl_session_timeout  10m;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_session_timeout  15m;
         # mozilla recommended
         ssl_ciphers ${CHACHACIPHERS}EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA256:EECDH+ECDSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+SHA384:EECDH+AES128:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS:!RC4:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA:!CAMELLIA;
         ssl_prefer_server_ciphers   on;
@@ -578,10 +644,15 @@ server {
         access_log              /var/log/nginx/localhost_ssl.access.log     main;
         error_log               /var/log/nginx/localhost_ssl.error.log      error;
 
+# ngx_pagespeed & ngx_pagespeed handler
+#include /usr/local/nginx/conf/pagespeed.conf;
+#include /usr/local/nginx/conf/pagespeedhandler.conf;
+#include /usr/local/nginx/conf/pagespeedstatslog.conf;
+
     location / {
         return 302 http://\$server_name\$request_uri;
     }
-    
+
   include /usr/local/nginx/conf/phpmyadmin_https.conf;
   include /usr/local/nginx/conf/staticfiles.conf;
   #include /usr/local/nginx/conf/php.conf;
@@ -602,62 +673,78 @@ chmod 0666 /var/log/nginx/localhost_ssl.error.log
 myadminupdater() {
 
 if [[ ! -d "$UPDATEDIR" ]]; then
-	mkdir -p $UPDATEDIR
+	mkdir -p "$UPDATEDIR"
 fi
 
 if [[ ! -f "/root/tools/phpmyadmin_update.sh" ]]; then
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "Create update script:" $boldgreen
-cecho "/root/tools/phpmyadmin_update.sh" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "Create update script:" "$boldgreen"
+cecho "/root/tools/phpmyadmin_update.sh" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
 
 cat > "/root/tools/phpmyadmin_update.sh" <<EOF
 #!/bin/bash
 export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin"
 DT=\$(date +"%d%m%y-%H%M%S")
+YARN_TMPDIR='/home/yarntmp-phpmyadmin'
 ##############################################
 CENTMINLOGDIR='/root/centminlogs'
-export COMPOSER_ALLOW_SUPERUSER=1
 
-if [ ! -d "$CENTMINLOGDIR" ]; then
-  mkdir -p $CENTMINLOGDIR
+if [ ! -d "\$CENTMINLOGDIR" ]; then
+  mkdir -p "\$CENTMINLOGDIR"
 fi
 ##############################################
+version_gt() {
+    test "\$(printf '%s\n' "\$@" | sort -V | head -n 1)" != "\$1";
+}
+
 starttime=\$(date +%s.%N)
 {
 
-#DIRNAME_BACKUP=${DIRNAME}_backup_${DT}
-#mv ${BASEDIR}/${DIRNAME} ${BASEDIR}/${DIRNAME_BACKUP}
-mkdir -p /svr-setup
-pushd /svr-setup
+# Try IPv4 first, fallback to IPv6 for IPv6-only servers
+LATEST_VERSION=\$(curl -4 -s --connect-timeout 5 "https://api.github.com/repos/phpmyadmin/phpmyadmin/releases/latest" | jq -r .tag_name | sed 's/RELEASE_//' | tr '_' '.')
+if [[ -z "\$LATEST_VERSION" || "\$LATEST_VERSION" == "null" ]]; then
+    LATEST_VERSION=\$(curl -6 -s --connect-timeout 5 "https://api.github.com/repos/phpmyadmin/phpmyadmin/releases/latest" | jq -r .tag_name | sed 's/RELEASE_//' | tr '_' '.')
+fi
 
-wget https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-english.tar.gz -O /svr-setup/phpMyAdmin-latest-english.tar.gz
-tar xzf phpMyAdmin-latest-english.tar.gz
-\cp -af phpMyAdmin-*-english/* ${BASEDIR}/${DIRNAME}
-rm -rf ${BASEDIR}/${DIRNAME}/phpMyAdmin-*-english
-popd
+INSTALLED_VERSION=\$(ls "${BASEDIR}/${DIRNAME}" | grep RELEASE-DATE | cut -d'-' -f3)
 
-chown ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
-chown -R ${USERNAME}:nginx ${BASEDIR}/${DIRNAME}
+if version_gt "\$LATEST_VERSION" "\$INSTALLED_VERSION"; then
+	echo "Updating from \$INSTALLED_VERSION to \$LATEST_VERSION"
+	echo "cd ${BASEDIR}"
+	cd "${BASEDIR}" || exit 1
 
-} 2>&1 | tee \${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log
+	wget -O phpMyAdmin-latest.zip https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip
+	unzip phpMyAdmin-latest.zip
+	rsync -a phpMyAdmin-*-all-languages/ "${DIRNAME}/" --exclude=config.inc.php
+	rm -rf phpMyAdmin-*-all-languages
+	rm -f phpMyAdmin-latest.zip
+
+	chown "${USERNAME}:nginx" "${BASEDIR}/${DIRNAME}"
+	chown -R "${USERNAME}:nginx" "${BASEDIR}/${DIRNAME}"
+	chmod g+rx "${BASEDIR}/${DIRNAME}"
+else
+  echo "\$INSTALLED_VERSION is up to date"
+fi
+
+} 2>&1 | tee "\${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log"
 
 endtime=\$(date +%s.%N)
 
 INSTALLTIME=\$(echo "scale=2;\$endtime - \$starttime"|bc )
-echo "" >> \${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log 
-echo "Total phpmyadmin Update Time: \$INSTALLTIME seconds" >> \${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log
+echo "" >> "\${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log"
+echo "Total phpmyadmin Update Time: \$INSTALLTIME seconds" >> "\${CENTMINLOGDIR}/centminmod_phpmyadmin_update-\${DT}.log"
 EOF
 
 chmod 0700 /root/tools/phpmyadmin_update.sh
 
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "Create cronjob for auto updating phpmyadmin:" $boldgreen
-cecho "/root/tools/phpmyadmin_update.sh" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "Create cronjob for auto updating phpmyadmin:" "$boldgreen"
+cecho "/root/tools/phpmyadmin_update.sh" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
 
 
-if [[ -z "$(crontab -l 2>&1 | grep phpmyadmin_update.sh)" ]]; then
+if ! crontab -l 2>&1 | grep -q phpmyadmin_update.sh; then
     crontab -l > cronjoblist
     mkdir -p /etc/centminmod/cronjobs
     cp cronjoblist /etc/centminmod/cronjobs/cronjoblist-before-phpmyadmin-setup.txt
@@ -676,14 +763,14 @@ fi
 myadminremove() {
 
 if [[ ! -d "$UPDATEDIR" ]]; then
-	mkdir -p $UPDATEDIR
+	mkdir -p "$UPDATEDIR"
 fi
 
 if [[ -f "/root/tools/phpmyadmin_uninstall.sh" || ! -f "/root/tools/phpmyadmin_uninstall.sh" ]]; then
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "Create uninstall script:" $boldgreen
-cecho "/root/tools/phpmyadmin_uninstall.sh" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "Create uninstall script:" "$boldgreen"
+cecho "/root/tools/phpmyadmin_uninstall.sh" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
 
 cat > "/root/tools/phpmyadmin_uninstall.sh" <<EOF
 #!/bin/bash
@@ -691,8 +778,8 @@ DT=\$(date +"%d%m%y-%H%M%S")
 ##############################################
 CENTMINLOGDIR='/root/centminlogs'
 
-if [ ! -d "$CENTMINLOGDIR" ]; then
-mkdir $CENTMINLOGDIR
+if [ ! -d "\$CENTMINLOGDIR" ]; then
+mkdir "\$CENTMINLOGDIR"
 fi
 ##############################################
 starttime=\$(date +%s.%N)
@@ -708,10 +795,10 @@ rm -rf /usr/local/nginx/conf/phpmyadmin_https.conf
 rm -rf /usr/local/nginx/conf/phpmyadmin.conf
 rm -rf /usr/local/nginx/conf/phpmyadmin_check"
 
-rm -rf ${BASEDIR}/${DIRNAME}
+rm -rf "${BASEDIR}/${DIRNAME}"
 rm -rf /root/tools/phpmyadmin_update.sh
 rm -rf /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf
-rm -rf /usr/local/nginx/conf/php_${DIRNAME}.conf
+rm -rf "/usr/local/nginx/conf/php_${DIRNAME}.conf"
 rm -rf /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf
 rm -rf /usr/local/nginx/conf/htpassphpmyadmin
 rm -rf /usr/local/nginx/conf/phpmyadmin_https.conf
@@ -724,13 +811,13 @@ rm -rf /etc/centminmod/cronjobs/cronjoblist-after-phpmyadmin-setup.txt
 systemctl restart nginx
 systemctl restart php-fpm
 
-} 2>&1 | tee \${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log
+} 2>&1 | tee "\${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log"
 
 endtime=\$(date +%s.%N)
 
 INSTALLTIME=\$(echo "scale=2;\$endtime - \$starttime"|bc )
-echo "" >> \${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log 
-echo "Total phpmyadmin Update Time: \$INSTALLTIME seconds" >> \${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log
+echo "" >> "\${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log"
+echo "Total phpmyadmin Update Time: \$INSTALLTIME seconds" >> "\${CENTMINLOGDIR}/centminmod_phpmyadmin_uninstall-\${DT}.log"
 EOF
 
 chmod 0700 /root/tools/phpmyadmin_uninstall.sh
@@ -743,44 +830,42 @@ fi
 myadminmsg() {
 
 echo ""
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "Password protected ${DIRNAME}" $boldgreen
-cecho "at path ${BASEDIR}/${DIRNAME}" $boldgreen
-cecho "config.inc.php at: ${BASEDIR}/${DIRNAME}/config.inc.php" $boldgreen
-cecho "  WEB url: " $boldgreen
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "Password protected ${DIRNAME}" "$boldgreen"
+cecho "at path ${BASEDIR}/${DIRNAME}" "$boldgreen"
+cecho "config.inc.php at: ${BASEDIR}/${DIRNAME}/config.inc.php" "$boldgreen"
+cecho "  WEB url: " "$boldgreen"
 echo ""
-cecho "  https://${SSLHNAME}/${DIRNAME}" $boldwhite
+cecho "  https://${SSLHNAME}/${DIRNAME}" "$boldwhite"
 echo ""
-cecho "Login with your MySQL root username / password" $boldgreen
-echo
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "Command line verify" $boldgreen
-echo
-cecho "  curl -Ik -u ${USER}:${PASS} https://${SSLHNAME}/${DIRNAME}" $boldwhite
-echo
-cecho "---------------------------------------------------------------" $boldyellow
+echo "or"
+echo ""
+cecho "  https://${CNIP}/${DIRNAME}" "$boldwhite"
+echo ""
+cecho "Login with your MySQL root username / password" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
 htpassdetails
-cecho "phpmyadmin update script at: /root/tools/phpmyadmin_update.sh" $boldgreen
-cecho "Add your own cron job to automatically run the update script i.e." $boldgreen
+cecho "phpmyadmin update script at: /root/tools/phpmyadmin_update.sh" "$boldgreen"
+cecho "Add your own cron job to automatically run the update script i.e." "$boldgreen"
 echo ""
-cecho "  15 01 * * * /root/tools/phpmyadmin_update.sh" $boldwhite
+cecho "  15 01 * * * /root/tools/phpmyadmin_update.sh" "$boldwhite"
 echo ""
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "phpmyadmin uninstall script at: /root/tools/phpmyadmin_uninstall.sh" $boldgreen
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "phpmyadmin uninstall script at: /root/tools/phpmyadmin_uninstall.sh" "$boldgreen"
 echo ""
-cecho "  /root/tools/phpmyadmin_uninstall.sh" $boldwhite
+cecho "  /root/tools/phpmyadmin_uninstall.sh" "$boldwhite"
 echo ""
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "SSL vhost: /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf" $boldgreen
-cecho "php-fpm includes: /usr/local/nginx/conf/php_${DIRNAME}.conf" $boldgreen
-cecho "php-fpm pool conf: /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" $boldgreen
-cecho "dedicated php-fpm pool user: ${USERNAME}" $boldgreen
-cecho "dedicated php-fpm pool group: nginx" $boldgreen
-cecho "dedicated php error log: /var/log/php_myadmin_error.log" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "SSL vhost access log: /var/log/nginx/localhost_ssl.access.log" $boldgreen
-cecho "SSL vhost error log: /var/log/nginx/localhost_ssl.error.log" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "SSL vhost: /usr/local/nginx/conf/conf.d/phpmyadmin_ssl.conf" "$boldgreen"
+cecho "php-fpm includes: /usr/local/nginx/conf/php_${DIRNAME}.conf" "$boldgreen"
+cecho "php-fpm pool conf: /usr/local/nginx/conf/phpfpmd/phpfpm_myadmin.conf" "$boldgreen"
+cecho "dedicated php-fpm pool user: ${USERNAME}" "$boldgreen"
+cecho "dedicated php-fpm pool group: nginx" "$boldgreen"
+cecho "dedicated php error log: /var/log/php_myadmin_error.log" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "SSL vhost access log: /var/log/nginx/localhost_ssl.access.log" "$boldgreen"
+cecho "SSL vhost error log: /var/log/nginx/localhost_ssl.error.log" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
 echo ""
 
 echo "phpmyadmin_install='y'" > /usr/local/nginx/conf/phpmyadmin_check
@@ -793,7 +878,7 @@ checkphpmyadmin
 starttime=$(date +%s.%N)
 {
 	#backup csf.conf
-	cp -a /etc/csf/csf.conf /etc/csf/csf.conf-backup_beforephpmyadmin_${DT}
+	cp -a /etc/csf/csf.conf "/etc/csf/csf.conf-backup_beforephpmyadmin_${DT}"
 
 	usercreate
 	myadmininstall
@@ -801,23 +886,23 @@ starttime=$(date +%s.%N)
 	myadminupdater
 	myadminremove
 	myadminmsg
-} 2>&1 | tee ${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log
+} 2>&1 | tee "${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log"
 
 endtime=$(date +%s.%N)
 
 INSTALLTIME=$(echo "scale=2;$endtime - $starttime"|bc )
-echo "" >> ${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log
-echo "Total phpmyadmin Install Time: $INSTALLTIME seconds" >> ${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log
+echo "" >> "${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log"
+echo "Total phpmyadmin Install Time: $INSTALLTIME seconds" >> "${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log"
 
-cecho "---------------------------------------------------------------" $boldyellow
-cecho "Total phpmyadmin Install Time: $INSTALLTIME seconds" $boldgreen
-cecho "phpmyadmin install log located at:" $boldgreen
-cecho "${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log" $boldgreen
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
+cecho "Total phpmyadmin Install Time: $INSTALLTIME seconds" "$boldgreen"
+cecho "phpmyadmin install log located at:" "$boldgreen"
+cecho "${CENTMINLOGDIR}/centminmod_phpmyadmin_install_${DT}.log" "$boldgreen"
+cecho "---------------------------------------------------------------" "$boldyellow"
 
 ;;
 resetpwd)
-cecho "---------------------------------------------------------------" $boldyellow
+cecho "---------------------------------------------------------------" "$boldyellow"
 createpassword
 htpassdetails
 ;;
